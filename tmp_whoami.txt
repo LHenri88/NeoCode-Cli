@@ -1,4 +1,0 @@
-npm error code ENEEDAUTH
-npm error need auth This command requires you to be logged in.
-npm error need auth You need to authorize this machine using `npm adduser`
-npm error A complete log of this run can be found in: D:\Users\Administrator\AppData\Local\npm-cache\_logs\2026-04-21T00_42_53_513Z-debug-0.log

@@ -1,3 +1,0 @@
-branch 'main' set up to track 'origin/main'.
-To https://github.com/LHenri88/NeoCode-Cli.git
- * [new branch]      main -> main
