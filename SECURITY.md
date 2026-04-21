@@ -60,7 +60,7 @@ This policy applies to:
 
 - the NeoCode source code in this repository
 - official release artifacts published from this repository
-- the `@gitlawb/openclaude` npm package
+- the `@gitlawb/NeoCode` npm package
 
 This policy does not cover:
 

@@ -10,7 +10,7 @@ dist/
 *.env.production
 *.env.staging
 
-# ── Arquivos de perfil com credenciais (NeoCode / OpenClaude) ─────────
+# ── Arquivos de perfil com credenciais (NeoCode) ─────────────────────
 .openclaude-profile.json
 .neocode-profile.json
 *-profile.json

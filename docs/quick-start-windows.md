@@ -1,4 +1,4 @@
-# OpenClaude Quick Start for Windows
+# NeoCode Quick Start for Windows
 
 This guide uses Windows PowerShell.
 
@@ -15,10 +15,10 @@ node --version
 npm --version
 ```
 
-## 2. Install OpenClaude
+## 2. Install NeoCode
 
 ```powershell
-npm install -g @gitlawb/openclaude
+npm install -g @gitlawb/NeoCode
 ```
 
 ## 3. Pick One Provider
@@ -32,7 +32,7 @@ $env:CLAUDE_CODE_USE_OPENAI="1"
 $env:OPENAI_API_KEY="sk-your-key-here"
 $env:OPENAI_MODEL="gpt-4o"
 
-openclaude
+NeoCode
 ```
 
 ### Option B: DeepSeek
@@ -43,7 +43,7 @@ $env:OPENAI_API_KEY="sk-your-key-here"
 $env:OPENAI_BASE_URL="https://api.deepseek.com/v1"
 $env:OPENAI_MODEL="deepseek-chat"
 
-openclaude
+NeoCode
 ```
 
 ### Option C: Ollama
@@ -61,7 +61,7 @@ $env:CLAUDE_CODE_USE_OPENAI="1"
 $env:OPENAI_BASE_URL="http://localhost:11434/v1"
 $env:OPENAI_MODEL="llama3.1:8b"
 
-openclaude
+NeoCode
 ```
 
 No API key is needed for Ollama local models.
@@ -86,19 +86,19 @@ $env:OPENAI_BASE_URL="http://localhost:1234/v1"
 $env:OPENAI_MODEL="your-model-name"
 # $env:OPENAI_API_KEY="lmstudio"  # optional: some users need a dummy key
 
-openclaude
+NeoCode
 ```
 
 Replace `your-model-name` with the model name shown in LM Studio.
 
 No API key is needed for LM Studio local models (but uncomment the `OPENAI_API_KEY` line if you hit auth errors).
 
-## 4. If `openclaude` Is Not Found
+## 4. If `NeoCode` Is Not Found
 
 Close PowerShell, open a new one, and try again:
 
 ```powershell
-openclaude
+NeoCode
 ```
 
 ## 5. If Your Provider Fails
@@ -124,16 +124,16 @@ Check the basics:
 - make sure a model is loaded in LM Studio
 - make sure the model name matches what you set in `OPENAI_MODEL`
 
-## 6. Updating OpenClaude
+## 6. Updating NeoCode
 
 ```powershell
-npm install -g @gitlawb/openclaude@latest
+npm install -g @gitlawb/NeoCode@latest
 ```
 
-## 7. Uninstalling OpenClaude
+## 7. Uninstalling NeoCode
 
 ```powershell
-npm uninstall -g @gitlawb/openclaude
+npm uninstall -g @gitlawb/NeoCode
 ```
 
 ## Need Advanced Setup?
