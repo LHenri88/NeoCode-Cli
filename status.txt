@@ -1,0 +1,219 @@
+﻿On branch main
+Your branch is behind 'origin/main' by 91 commits, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .env.example
+	modified:   .github/ISSUE_TEMPLATE/bug_report.md
+	modified:   .github/ISSUE_TEMPLATE/config.yml
+	modified:   .github/ISSUE_TEMPLATE/feature_request.md
+	modified:   .github/pull_request_template.md
+	modified:   .gitignore
+	modified:   CONTRIBUTING.md
+	modified:   PLAYBOOK.md
+	modified:   README.md
+	modified:   SECURITY.md
+	deleted:    bin/openclaude
+	modified:   bun.lock
+	modified:   package.json
+	modified:   scripts/build.ts
+	modified:   scripts/grpc-cli.ts
+	modified:   scripts/no-telemetry-plugin.ts
+	modified:   scripts/provider-bootstrap.ts
+	modified:   scripts/provider-launch.ts
+	modified:   scripts/provider-recommend.ts
+	modified:   scripts/render-coverage-heatmap.ts
+	modified:   scripts/start-grpc.ts
+	modified:   scripts/system-check.ts
+	modified:   src/cli/update.ts
+	modified:   src/commands.ts
+	modified:   src/commands/btw/btw.tsx
+	modified:   src/commands/install.tsx
+	modified:   src/commands/memory/index.ts
+	modified:   src/commands/memory/memory.tsx
+	modified:   src/commands/provider/provider.test.tsx
+	modified:   src/commands/provider/provider.tsx
+	modified:   src/commands/sandbox-toggle/sandbox-toggle.tsx
+	modified:   src/commands/voice/index.ts
+	modified:   src/commands/voice/voice.ts
+	modified:   src/commands/wiki/index.ts
+	modified:   src/commands/wiki/wiki.tsx
+	modified:   src/components/AutoUpdater.tsx
+	modified:   src/components/Feedback.tsx
+	modified:   src/components/HelpV2/General.tsx
+	modified:   src/components/HelpV2/HelpV2.tsx
+	modified:   src/components/PromptInput/PromptInput.tsx
+	modified:   src/components/PromptInput/usePromptInputPlaceholder.ts
+	modified:   src/components/ProviderManager.test.tsx
+	modified:   src/components/ProviderManager.tsx
+	modified:   src/components/Spinner.tsx
+	modified:   src/components/Spinner/utils.ts
+	modified:   src/components/StartupScreen.ts
+	modified:   src/components/StatusLine.tsx
+	modified:   src/components/memory/MemoryFileSelector.tsx
+	modified:   src/components/permissions/rules/AddPermissionRules.tsx
+	modified:   src/constants/promptIdentity.test.ts
+	modified:   src/constants/prompts.ts
+	modified:   src/constants/spinnerVerbs.ts
+	modified:   src/constants/system.ts
+	modified:   src/entrypoints/cli.tsx
+	modified:   src/entrypoints/mcp.ts
+	modified:   src/grpc/server.ts
+	modified:   src/hooks/useVoice.ts
+	modified:   src/hooks/useVoiceEnabled.ts
+	modified:   src/hooks/useVoiceIntegration.tsx
+	modified:   src/ink/components/App.tsx
+	modified:   src/ink/hooks/use-input.ts
+	modified:   src/ink/terminal.ts
+	modified:   src/ink/termio/osc.ts
+	modified:   src/interactiveHelpers.tsx
+	modified:   src/main.tsx
+	deleted:    src/proto/openclaude.proto
+	modified:   src/query.ts
+	modified:   src/screens/REPL.tsx
+	modified:   src/services/api/claude.ts
+	modified:   src/services/api/client.ts
+	modified:   src/services/api/codexShim.ts
+	modified:   src/services/api/codexUsage.ts
+	modified:   src/services/api/errors.ts
+	modified:   src/services/api/openaiShim.ts
+	modified:   src/services/api/providerConfig.ts
+	modified:   src/services/api/withRetry.ts
+	modified:   src/services/autoDream/autoDream.ts
+	modified:   src/services/autoDream/config.ts
+	modified:   src/services/autoDream/consolidationPrompt.ts
+	modified:   src/services/autoFix/autoFixRunner.test.ts
+	modified:   src/services/autoFix/autoFixRunner.ts
+	modified:   src/services/wiki/indexBuilder.ts
+	modified:   src/services/wiki/ingest.test.ts
+	modified:   src/services/wiki/init.test.ts
+	modified:   src/services/wiki/init.ts
+	modified:   src/services/wiki/paths.ts
+	modified:   src/services/wiki/status.test.ts
+	modified:   src/state/AppStateStore.ts
+	modified:   src/tools.ts
+	modified:   src/tools/AgentTool/built-in/exploreAgent.ts
+	modified:   src/tools/AgentTool/built-in/generalPurposeAgent.ts
+	modified:   src/tools/WebSearchTool/README_SEARCH_PROVIDERS.md
+	modified:   src/tools/WebSearchTool/WebSearchTool.ts
+	modified:   src/utils/attribution.ts
+	modified:   src/utils/buildConfig.test.ts
+	modified:   src/utils/buildConfig.ts
+	modified:   src/utils/computerUse/gates.ts
+	modified:   src/utils/computerUse/hostAdapter.ts
+	modified:   src/utils/config.ts
+	modified:   src/utils/context.test.ts
+	modified:   src/utils/context.ts
+	modified:   src/utils/doctorDiagnostic.ts
+	modified:   src/utils/envUtils.ts
+	modified:   src/utils/githubModelsCredentials.ts
+	modified:   src/utils/gracefulShutdown.ts
+	modified:   src/utils/http.ts
+	modified:   src/utils/localInstaller.ts
+	modified:   src/utils/model/openaiContextWindows.ts
+	modified:   src/utils/model/providers.ts
+	modified:   src/utils/openclaudeInstallSurfaces.test.ts
+	deleted:    src/utils/openclaudePaths.test.ts
+	modified:   src/utils/openclaudeUiSurfaces.test.ts
+	modified:   src/utils/permissions/filesystem.ts
+	modified:   src/utils/processUserInput/processTextPrompt.ts
+	modified:   src/utils/providerDiscovery.ts
+	modified:   src/utils/providerFlag.ts
+	modified:   src/utils/providerProfile.test.ts
+	modified:   src/utils/providerProfile.ts
+	modified:   src/utils/providerProfiles.ts
+	modified:   src/utils/providerValidation.ts
+	modified:   src/utils/settings/constants.ts
+	modified:   src/utils/settings/settings.ts
+	modified:   src/utils/settings/types.ts
+	modified:   src/utils/theme.ts
+	modified:   src/voice/voiceModeEnabled.ts
+	modified:   tsconfig.json
+	modified:   vscode-extension/openclaude-vscode/README.md
+	deleted:    vscode-extension/openclaude-vscode/media/openclaude.svg
+	modified:   vscode-extension/openclaude-vscode/package.json
+	modified:   vscode-extension/openclaude-vscode/src/extension.js
+	modified:   vscode-extension/openclaude-vscode/src/extension.test.js
+	modified:   vscode-extension/openclaude-vscode/src/presentation.js
+	modified:   vscode-extension/openclaude-vscode/src/presentation.test.js
+	deleted:    vscode-extension/openclaude-vscode/themes/OpenClaude-Terminal-Black.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.github/workflows/release.yml
+	.github/workflows/test-install.yml
+	CHANGELOG_AUDIT.md
+	CLAUDE.md
+	COMMANDS.md
+	NEO.md
+	NeoCode.code-workspace
+	_archive/
+	bin/neocode
+	bunfig.toml
+	docs/API.md
+	docs/ARCHITECTURE.md
+	docs/COMMANDS.md
+	docs/DESIGN_SYSTEM.md
+	docs/EPICS.md
+	docs/FEATURES.md
+	docs/FIXES_APPLIED.md
+	docs/INSTALLATION.md
+	docs/PRD.md
+	docs/REQUIREMENTS.md
+	docs/USER_GUIDE.md
+	docs/get/
+	docs/mockups/
+	docs/providers.md
+	scripts/benchmark-model.ts
+	scripts/embed-scene-image.ts
+	scripts/install.ps1
+	scripts/install.sh
+	src/__test-setup__/
+	src/assets/
+	src/banner.ts
+	src/commands/channel/
+	src/commands/computer-use/
+	src/commands/import/
+	src/commands/language/
+	src/commands/omniroute/
+	src/commands/preview/
+	src/commands/research/
+	src/commands/swarm/
+	src/components/NeoStatusBar.tsx
+	src/i18n/
+	src/keybindings/types.ts
+	src/proto/neocode.proto
+	src/services/agentSwarm/
+	src/services/api/providerIntegration.test.ts
+	src/services/autoDream/dreamLog.ts
+	src/services/btw/
+	src/services/ciHooks/
+	src/services/fileSync/
+	src/services/gitNative/
+	src/services/guidanceAgent/
+	src/services/kairos/
+	src/services/memoryPalace/
+	src/services/notifications/
+	src/services/omniRoute/
+	src/services/perfProfiler/
+	src/services/pluginRegistry/
+	src/services/selfImprove/
+	src/services/webPreview/
+	src/services/whisperSTT.ts
+	src/services/windowsSpeechRecognition.ts
+	src/tools/WebPreviewTool/
+	src/types/removed-external-modules.d.ts
+	src/utils/computerUse/crossPlatform.ts
+	src/utils/contextWindowManager.ts
+	src/utils/i18n.ts
+	src/utils/neocodePaths.test.ts
+	src/utils/promptEnhancer.ts
+	src/utils/providerHealthcheck.ts
+	status.txt
+	vscode-extension/openclaude-vscode/media/neocode.svg
+	vscode-extension/openclaude-vscode/src/grpcClient.js
+	vscode-extension/openclaude-vscode/themes/NeoCode-Matrix-Black.json
+
+no changes added to commit (use "git add" and/or "git commit -a")

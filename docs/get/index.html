@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeoCode — Install</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --code-bg: #1e2430;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .logo { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem; }
+    .tagline { color: var(--muted); font-size: 1.1rem; margin-bottom: 2.5rem; text-align: center; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 { font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+    .cmd {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-family: 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 0.95rem;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .cmd:hover { border-color: var(--accent); }
+    .cmd .copy-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 0.8rem; white-space: nowrap; padding: 0.2rem 0.5rem;
+      border-radius: 4px; transition: background 0.15s, color 0.15s;
+    }
+    .cmd .copy-btn:hover { background: var(--border); color: var(--text); }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .tab {
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--muted);
+      background: none;
+      transition: all 0.15s;
+    }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+    .os-section { display: none; }
+    .os-section.active { display: block; }
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
+    .feature { background: var(--code-bg); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); }
+    .feature strong { color: var(--text); display: block; margin-bottom: 0.25rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="logo">NeoCode</div>
+  <p class="tagline">Open-source AI coding agent · Local-first · No phone-home</p>
+
+  <div class="card">
+    <h2>Install</h2>
+    <div class="tabs">
+      <button class="tab" data-os="mac">macOS</button>
+      <button class="tab" data-os="linux">Linux</button>
+      <button class="tab" data-os="windows">Windows</button>
+    </div>
+
+    <div class="os-section" id="os-mac">
+      <div class="cmd">
+        <span>curl -fsSL https://get.neocode.dev/install.sh | bash</span>
+        <button class="copy-btn" onclick="copy(this, 'curl -fsSL https://get.neocode.dev/install.sh | bash')">Copy</button>
+      </div>
+    </div>
+    <div class="os-section" id="os-linux">
+      <div class="cmd">
+        <span>curl -fsSL https://get.neocode.dev/install.sh | bash</span>
+        <button class="copy-btn" onclick="copy(this, 'curl -fsSL https://get.neocode.dev/install.sh | bash')">Copy</button>
+      </div>
+    </div>
+    <div class="os-section" id="os-windows">
+      <div class="cmd">
+        <span>irm https://get.neocode.dev/install.ps1 | iex</span>
+        <button class="copy-btn" onclick="copy(this, 'irm https://get.neocode.dev/install.ps1 | iex')">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Features</h2>
+    <div class="features">
+      <div class="feature"><strong>Local AI</strong>Runs with Ollama — no cloud required</div>
+      <div class="feature"><strong>Memory Palace</strong>Persistent memory across sessions</div>
+      <div class="feature"><strong>AutoDream</strong>Background memory consolidation</div>
+      <div class="feature"><strong>No telemetry</strong>Zero phone-home, fully private</div>
+      <div class="feature"><strong>Multi-provider</strong>Anthropic, OpenAI, Gemini, Bedrock…</div>
+      <div class="feature"><strong>KAIROS</strong>Self-improving agent loop</div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/neocode-dev/neocode">GitHub</a> ·
+    <a href="https://github.com/neocode-dev/neocode/blob/main/docs/providers.md">Providers</a> ·
+    <a href="https://github.com/neocode-dev/neocode/blob/main/CONTRIBUTING.md">Contributing</a>
+  </footer>
+
+  <script>
+    // Detect OS and activate tab
+    const platform = navigator.platform.toLowerCase()
+    const ua = navigator.userAgent.toLowerCase()
+    let detected = 'linux'
+    if (ua.includes('win') || platform.includes('win')) detected = 'windows'
+    else if (ua.includes('mac') || platform.includes('mac')) detected = 'mac'
+
+    function activateTab(os) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.os === os))
+      document.querySelectorAll('.os-section').forEach(s => s.classList.toggle('active', s.id === 'os-' + os))
+    }
+    activateTab(detected)
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => activateTab(t.dataset.os)))
+
+    function copy(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = 'Copy' }, 2000)
+      })
+    }
+  </script>
+</body>
+</html>

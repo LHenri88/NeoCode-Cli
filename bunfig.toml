@@ -1,0 +1,2 @@
+[test]
+preload = ["./src/__test-setup__/mock-growthbook.ts"]

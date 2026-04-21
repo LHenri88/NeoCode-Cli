@@ -1,0 +1,16 @@
+{
+  "startup": {
+    "welcome": "Welcome to NeoCode",
+    "subtitle": "Agentic AI interface for any LLM provider"
+  },
+  "command": {
+    "language": {
+      "description": "Switch the NeoCode interface language",
+      "whenToUse": "Call this when you want the CLI copy in a different language",
+      "confirm": "Interface language set to {{locale}}."
+    }
+  },
+  "error": {
+    "invalidLocale": "Unsupported language code '{{code}}'. Supported: en, pt, es."
+  }
+}

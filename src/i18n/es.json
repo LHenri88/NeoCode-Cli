@@ -1,0 +1,16 @@
+{
+  "startup": {
+    "welcome": "Bienvenido a NeoCode",
+    "subtitle": "Interfaz de IA agéntica para cualquier proveedor LLM"
+  },
+  "command": {
+    "language": {
+      "description": "Cambie el idioma de la interfaz de NeoCode",
+      "whenToUse": "Use esto cuando quiera el texto de la CLI en otro idioma",
+      "confirm": "Idioma de la interfaz establecido en {{locale}}."
+    }
+  },
+  "error": {
+    "invalidLocale": "El código de idioma '{{code}}' no está soportado. Soportados: en, pt, es."
+  }
+}

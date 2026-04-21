@@ -1,0 +1,142 @@
+{
+  "name": "neocode-vscode",
+  "displayName": "NeoCode",
+  "description": "VS Code companion for NeoCode — the open-source agentic CLI. Project-aware launch, Control Center, and Matrix-inspired theme.",
+  "version": "0.2.0",
+  "publisher": "neocode",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:neocode.start",
+    "onCommand:neocode.startInWorkspaceRoot",
+    "onCommand:neocode.openDocs",
+    "onCommand:neocode.openSetupDocs",
+    "onCommand:neocode.openWorkspaceProfile",
+    "onCommand:neocode.openControlCenter",
+    "onView:neocode.controlCenter"
+  ],
+  "main": "./src/extension.js",
+  "files": [
+    "README.md",
+    "media/**",
+    "src/extension.js",
+    "src/presentation.js",
+    "src/state.js",
+    "themes/**"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "neocode.start",
+        "title": "NeoCode: Launch in Terminal",
+        "category": "NeoCode"
+      },
+      {
+        "command": "neocode.startInWorkspaceRoot",
+        "title": "NeoCode: Launch in Workspace Root",
+        "category": "NeoCode"
+      },
+      {
+        "command": "neocode.openDocs",
+        "title": "NeoCode: Open Repository",
+        "category": "NeoCode"
+      },
+      {
+        "command": "neocode.openSetupDocs",
+        "title": "NeoCode: Open Setup Guide",
+        "category": "NeoCode"
+      },
+      {
+        "command": "neocode.openWorkspaceProfile",
+        "title": "NeoCode: Open Workspace Profile",
+        "category": "NeoCode"
+      },
+      {
+        "command": "neocode.openControlCenter",
+        "title": "NeoCode: Open Control Center",
+        "category": "NeoCode"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "neocode",
+          "title": "NeoCode",
+          "icon": "media/neocode.svg"
+        }
+      ]
+    },
+    "views": {
+      "neocode": [
+        {
+          "id": "neocode.controlCenter",
+          "name": "Control Center",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "NeoCode",
+      "properties": {
+        "neocode.launchCommand": {
+          "type": "string",
+          "default": "neocode",
+          "description": "Command run in the integrated terminal when launching NeoCode."
+        },
+        "neocode.terminalName": {
+          "type": "string",
+          "default": "NeoCode",
+          "description": "Integrated terminal tab name for NeoCode sessions."
+        },
+        "neocode.useOpenAIShim": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optionally inject CLAUDE_CODE_USE_OPENAI=1 in launched NeoCode terminals for OpenAI-compatible provider routing."
+        },
+        "neocode.grpcPort": {
+          "type": "number",
+          "default": 50051,
+          "description": "Port for gRPC headless server connection."
+        },
+        "neocode.autoConnectGrpc": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically connect to NeoCode gRPC server on startup."
+        }
+      }
+    },
+    "themes": [
+      {
+        "label": "NeoCode Matrix Black",
+        "uiTheme": "vs-dark",
+        "path": "./themes/NeoCode-Matrix-Black.json"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test ./src/*.test.js",
+    "lint": "node -e \"for (const file of require('node:fs').readdirSync('./src')) { if (file.endsWith('.js')) { require('node:child_process').execFileSync(process.execPath, ['--check', require('node:path').join('src', file)], { stdio: 'inherit' }); } }\"",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "keywords": [
+    "neocode",
+    "terminal",
+    "theme",
+    "cli",
+    "llm",
+    "agent",
+    "ollama",
+    "matrix"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://gitlawb.com/z6MkqDnb7Siv3Cwj7pGJq4T5EsUisECqR8KpnDLwcaZq5TPr/neocode"
+  },
+  "license": "MIT"
+}

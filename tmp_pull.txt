@@ -1,0 +1,91 @@
+Auto-merging .env.example
+Auto-merging .github/workflows/release.yml
+CONFLICT (add/add): Merge conflict in .github/workflows/release.yml
+Auto-merging README.md
+CONFLICT (content): Merge conflict in README.md
+Auto-merging bun.lock
+CONFLICT (content): Merge conflict in bun.lock
+Auto-merging package.json
+CONFLICT (content): Merge conflict in package.json
+Auto-merging scripts/build.ts
+CONFLICT (content): Merge conflict in scripts/build.ts
+Auto-merging scripts/no-telemetry-plugin.ts
+Auto-merging scripts/provider-bootstrap.ts
+Auto-merging scripts/provider-launch.ts
+Auto-merging scripts/system-check.ts
+Auto-merging src/commands.ts
+CONFLICT (content): Merge conflict in src/commands.ts
+Auto-merging src/commands/provider/provider.test.tsx
+Auto-merging src/commands/provider/provider.tsx
+CONFLICT (content): Merge conflict in src/commands/provider/provider.tsx
+Auto-merging src/components/ProviderManager.test.tsx
+CONFLICT (content): Merge conflict in src/components/ProviderManager.test.tsx
+Auto-merging src/components/ProviderManager.tsx
+CONFLICT (content): Merge conflict in src/components/ProviderManager.tsx
+Auto-merging src/components/StartupScreen.ts
+CONFLICT (content): Merge conflict in src/components/StartupScreen.ts
+Auto-merging src/components/memory/MemoryFileSelector.tsx
+Auto-merging src/constants/promptIdentity.test.ts
+CONFLICT (content): Merge conflict in src/constants/promptIdentity.test.ts
+Auto-merging src/constants/prompts.ts
+CONFLICT (content): Merge conflict in src/constants/prompts.ts
+Auto-merging src/constants/system.ts
+CONFLICT (content): Merge conflict in src/constants/system.ts
+Auto-merging src/entrypoints/cli.tsx
+Auto-merging src/entrypoints/mcp.ts
+Auto-merging src/ink/termio/osc.ts
+Auto-merging src/query.ts
+Auto-merging src/screens/REPL.tsx
+Auto-merging src/services/api/claude.ts
+Auto-merging src/services/api/client.ts
+Auto-merging src/services/api/codexShim.ts
+Auto-merging src/services/api/codexUsage.ts
+Auto-merging src/services/api/errors.ts
+Auto-merging src/services/api/openaiShim.ts
+CONFLICT (content): Merge conflict in src/services/api/openaiShim.ts
+Auto-merging src/services/api/providerConfig.ts
+CONFLICT (content): Merge conflict in src/services/api/providerConfig.ts
+Auto-merging src/services/autoFix/autoFixRunner.test.ts
+CONFLICT (content): Merge conflict in src/services/autoFix/autoFixRunner.test.ts
+Auto-merging src/services/autoFix/autoFixRunner.ts
+CONFLICT (content): Merge conflict in src/services/autoFix/autoFixRunner.ts
+Auto-merging src/services/wiki/init.test.ts
+CONFLICT (content): Merge conflict in src/services/wiki/init.test.ts
+Auto-merging src/tools.ts
+Auto-merging src/tools/AgentTool/built-in/exploreAgent.ts
+CONFLICT (content): Merge conflict in src/tools/AgentTool/built-in/exploreAgent.ts
+Auto-merging src/tools/AgentTool/built-in/generalPurposeAgent.ts
+CONFLICT (content): Merge conflict in src/tools/AgentTool/built-in/generalPurposeAgent.ts
+Auto-merging src/tools/WebSearchTool/README_SEARCH_PROVIDERS.md
+CONFLICT (content): Merge conflict in src/tools/WebSearchTool/README_SEARCH_PROVIDERS.md
+Auto-merging src/tools/WebSearchTool/WebSearchTool.ts
+Auto-merging src/utils/config.ts
+Auto-merging src/utils/context.test.ts
+CONFLICT (content): Merge conflict in src/utils/context.test.ts
+Auto-merging src/utils/context.ts
+CONFLICT (content): Merge conflict in src/utils/context.ts
+Auto-merging src/utils/localInstaller.ts
+CONFLICT (content): Merge conflict in src/utils/localInstaller.ts
+Auto-merging src/utils/model/openaiContextWindows.ts
+CONFLICT (content): Merge conflict in src/utils/model/openaiContextWindows.ts
+Auto-merging src/utils/model/providers.ts
+Auto-merging src/utils/neocodePaths.test.ts
+CONFLICT (content): Merge conflict in src/utils/neocodePaths.test.ts
+Auto-merging src/utils/permissions/filesystem.ts
+Auto-merging src/utils/providerDiscovery.ts
+Auto-merging src/utils/providerFlag.ts
+CONFLICT (content): Merge conflict in src/utils/providerFlag.ts
+Auto-merging src/utils/providerProfile.test.ts
+Auto-merging src/utils/providerProfile.ts
+CONFLICT (content): Merge conflict in src/utils/providerProfile.ts
+Auto-merging src/utils/providerProfiles.ts
+CONFLICT (content): Merge conflict in src/utils/providerProfiles.ts
+Auto-merging src/utils/providerValidation.ts
+Auto-merging src/utils/settings/settings.ts
+CONFLICT (content): Merge conflict in src/utils/settings/settings.ts
+Auto-merging src/utils/settings/types.ts
+Auto-merging vscode-extension/openclaude-vscode/package.json
+CONFLICT (content): Merge conflict in vscode-extension/openclaude-vscode/package.json
+Auto-merging vscode-extension/openclaude-vscode/src/extension.js
+CONFLICT (content): Merge conflict in vscode-extension/openclaude-vscode/src/extension.js
+Automatic merge failed; fix conflicts and then commit the result.

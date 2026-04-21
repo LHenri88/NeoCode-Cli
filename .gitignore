@@ -1,0 +1,38 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ── Variáveis de ambiente e segredos ─────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env.local
+*.env.production
+*.env.staging
+
+# ── Arquivos de perfil com credenciais (NeoCode / OpenClaude) ─────────
+.openclaude-profile.json
+.neocode-profile.json
+*-profile.json
+*.profile.json
+
+# ── Chaves e certificados ─────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+secrets.json
+credentials.json
+auth.json
+
+# ── Relatórios, logs e temporários ───────────────────────────────────
+reports/
+coverage/
+*.log
+*.tsbuildinfo
+
+# ── Arquivos de configuração de ferramentas do agente ────────────────
+GEMINI.md
+/.claude
+package-lock.json

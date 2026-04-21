@@ -1,0 +1,70 @@
+name: E5 — Installation Tests
+
+on:
+  push:
+    paths:
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
+
+jobs:
+  install-unix:
+    name: Install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run installer (dry-run, no Ollama prompt)
+        env:
+          CI: 'true'
+          NEOCODE_VERSION: '0.0.0-test'
+        run: |
+          # Validate script syntax
+          bash -n scripts/install.sh
+          echo "Script syntax OK"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build and smoke test
+        run: |
+          npm install -g bun || true
+          bun install --frozen-lockfile
+          bun run build
+          node dist/cli.mjs --version
+        env:
+          ANTHROPIC_API_KEY: dummy
+
+  install-windows:
+    name: Install (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PowerShell script syntax
+        shell: pwsh
+        run: |
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            "${{ github.workspace }}\scripts\install.ps1",
+            [ref]$null,
+            [ref]$null
+          )
+          Write-Host "PowerShell script syntax OK"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build and smoke test
+        shell: bash
+        run: |
+          npm install -g bun || true
+          bun install --frozen-lockfile
+          bun run build
+          node dist/cli.mjs --version
+        env:
+          ANTHROPIC_API_KEY: dummy
