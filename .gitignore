@@ -31,6 +31,10 @@ reports/
 coverage/
 *.log
 *.tsbuildinfo
+tmp_*.txt
+temp_*.txt
+*.tmp
+.DS_Store
 
 # ── Arquivos de configuração de ferramentas do agente ────────────────
 GEMINI.md

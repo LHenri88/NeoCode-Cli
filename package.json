@@ -7,9 +7,12 @@
     "neocode": "./bin/neocode"
   },
   "files": [
-    "bin/",
+    "bin/neocode",
+    "bin/import-specifier.mjs",
+    "bin/import-specifier.test.mjs",
     "dist/cli.mjs",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
