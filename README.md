@@ -45,7 +45,7 @@ irm https://get.neocode.dev/install.ps1 | iex
 
 **NPM**
 ```bash
-npm install -g @neocode/cli
+npm install -g git+https://github.com/LHenri88/NeoCode-Cli.git
 ```
 
 If the install reports `ripgrep not found`, install ripgrep system-wide:

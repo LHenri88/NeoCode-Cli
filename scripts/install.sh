@@ -85,9 +85,9 @@ fi
 # ── NeoCode ───────────────────────────────────────────────────────────────────
 info "Installing NeoCode..."
 if [ "$NEOCODE_VERSION" = "latest" ]; then
-  npm install -g @neocode/cli
+  npm install -g git+https://github.com/LHenri88/NeoCode-Cli.git
 else
-  npm install -g "@neocode/cli@${NEOCODE_VERSION}"
+  npm install -g "git+https://github.com/LHenri88/NeoCode-Cli.git#${NEOCODE_VERSION}"
 fi
 ok "NeoCode $(neocode --version)"
 
