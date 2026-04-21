@@ -1,5 +1,6 @@
 node_modules/
 dist/
+bin-standalone/
 *.tsbuildinfo
 
 # ── Variáveis de ambiente e segredos ─────────────────────────────────

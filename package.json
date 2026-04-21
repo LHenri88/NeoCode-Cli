@@ -16,6 +16,13 @@
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
+    "build:standalone": "bun run scripts/build-standalone.ts",
+    "build:standalone:all": "bun run scripts/build-standalone.ts --all",
+    "build:standalone:windows": "bun run scripts/build-standalone.ts --windows",
+    "build:standalone:linux": "bun run scripts/build-standalone.ts --linux",
+    "build:standalone:macos": "bun run scripts/build-standalone.ts --macos",
+    "build:standalone:bun": "bun run scripts/build-standalone.ts --all --strategy bun",
+    "build:standalone:pkg": "bun run scripts/build-standalone.ts --all --strategy pkg",
     "dev": "bun run build && node dist/cli.mjs",
     "dev:profile": "bun run scripts/provider-launch.ts",
     "dev:profile:fast": "bun run scripts/provider-launch.ts auto --fast --bare",

@@ -48,6 +48,17 @@ irm https://get.neocode.dev/install.ps1 | iex
 npm install -g @neocode/cli
 ```
 
+**Standalone Binaries (No Node.js Required)**
+
+Download pre-built executables that work without installing Node.js:
+
+- [Windows x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-windows-x64.exe)
+- [Linux x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-linux-x64)
+- [macOS x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-macos-x64)
+- [macOS ARM64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-macos-arm64)
+
+Or build your own: see [STANDALONE_BUILD.md](STANDALONE_BUILD.md)
+
 If the install reports `ripgrep not found`, install ripgrep system-wide:
 
 ```bash
