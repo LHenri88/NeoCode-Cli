@@ -59,7 +59,7 @@ if (-not $ollamaInstalled) {
 
 # ── NeoCode ───────────────────────────────────────────────────────────────────
 Write-Info "Installing NeoCode..."
-$pkg = if ($Version -eq 'latest') { 'git+https://github.com/LHenri88/NeoCode-Cli.git' } else { "git+https://github.com/LHenri88/NeoCode-Cli.git#$Version" }
+$pkg = if ($Version -eq 'latest') { '@neocode/cli' } else { "@neocode/cli@$Version" }
 npm install -g $pkg
 Write-Ok "NeoCode $(neocode --version)"
 
