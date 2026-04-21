@@ -180,7 +180,6 @@ d173270 - feat: lancamento do NeoCode como projeto independente
 - Scripts: `scripts/` (build, test, system check)
 - Python: `python/` (provider integrations)
 - VSCode Extension: `vscode-extension/`
-- Archive: `_archive/` (legacy code, kept for reference)
 
 **Recommendation:** ✓ No action needed
 

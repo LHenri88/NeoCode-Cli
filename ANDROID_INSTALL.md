@@ -42,7 +42,7 @@ node --version  # should be v20+
 ### Step 3 — Clone NeoCode
 
 ```bash
-git clone https://github.com/Gitlawb/NeoCode.git
+git clone https://github.com/LHenri88/NeoCode-Cli.git
 cd NeoCode
 npm install
 npm link
