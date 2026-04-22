@@ -65,6 +65,36 @@ export const call: LocalCommandCall = async (args, _ctx) => {
   }
 
   if (sub === 'on' || sub === 'enable') {
+    // Privacy gate: Computer Use requires explicit consent beyond first-run
+    // This is a high-risk operation that gives AI screen access and control
+    const { hasConsent, saveConsent } = await import('../../utils/permissions/privacyGates.js')
+
+    if (!hasConsent('computer-use')) {
+      const warning = [
+        '⚠️  **Computer Use Permission Required**',
+        '',
+        'Computer Use allows the AI to:',
+        '  • Capture screenshots of your screen',
+        '  • Control mouse movements and clicks',
+        '  • Control keyboard input',
+        '',
+        '**Privacy Impact:** HIGH RISK',
+        '  • AI can see sensitive information on screen',
+        '  • AI can perform actions on your behalf',
+        '  • Each action will still require approval (unless yolo mode)',
+        '',
+        '**Note:** NeoCode operates locally with zero telemetry.',
+        'Screenshots are only sent to your configured AI provider (not stored).',
+        '',
+        'To enable Computer Use, you must explicitly grant permission.',
+        'Run `/privacy grant computer-use` to approve.',
+        '',
+        'Learn more: docs/PRIVACY_SYSTEM.md',
+      ].join('\n')
+
+      return { type: 'text', value: warning }
+    }
+
     saveGlobalConfig(prev => ({
       ...(prev as Record<string, unknown>),
       computerUseEnabled: true,

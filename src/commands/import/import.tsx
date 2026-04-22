@@ -518,5 +518,9 @@ export const call: LocalJSXCommandCall = async (
   _context,
   args,
 ): Promise<React.ReactNode> => {
+  // Note: Filesystem access is covered by first-run consent (FirstRunConsentDialog)
+  // Users have already approved file system operations when they first launched NeoCode
+  // See: docs/FIRST_RUN_CONSENT.md for details
+
   return runImportCommand(onDone, args ?? '')
 }

@@ -35,7 +35,22 @@ NeoCode es una CLI de agente de codificación de código abierto y centrada en l
 
 ### Instalación
 
-**Binarios Standalone (Recomendado)** ⚡ **¡No Requiere Node.js!**
+**npm / npx (Recomendado para usuarios de Node.js)** 📦
+
+Prueba sin instalar:
+```bash
+npx neocode-cli
+```
+
+Instalar globalmente:
+```bash
+npm install -g neocode-cli
+neocode
+```
+
+---
+
+**Binarios Standalone** ⚡ **¡No Requiere Node.js!**
 
 Instalador de una línea (descarga automáticamente la versión más reciente):
 

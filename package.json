@@ -1,15 +1,15 @@
 {
-  "name": "@neocode/cli",
+  "name": "neocode-cli",
   "version": "0.1.8",
   "description": "NeoCode agentic CLI for local and cloud LLM providers",
   "type": "module",
   "bin": {
-    "neocode": "./bin/neocode"
+    "neocode": "bin/neocode"
   },
   "files": [
     "bin/neocode",
     "bin/import-specifier.mjs",
-    "bin/import-specifier.test.mjs",
+
     "dist/cli.mjs",
     "README.md",
     "LICENSE"
@@ -58,8 +58,7 @@
     "doctor:report": "bun run scripts/system-check.ts --out reports/doctor-runtime.json",
     "hardening:check": "bun run smoke && bun run doctor:runtime",
     "hardening:strict": "bun run typecheck && bun run hardening:check",
-    "prepack": "npm run build",
-    "prepare": "npm run build"
+    "prepack": "bun run build"
   },
   "dependencies": {
     "gqwen-auth": "^4.2.0",
@@ -140,7 +139,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/LHenri88/NeoCode-Cli.git"
+    "url": "git+https://github.com/LHenri88/NeoCode-Cli.git"
   },
   "keywords": [
     "claude-code",
@@ -158,5 +157,14 @@
   },
   "overrides": {
     "lodash-es": "4.18.1"
-  }
+  },
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "author": "henrique88",
+  "bugs": {
+    "url": "https://github.com/LHenri88/NeoCode-Cli/issues"
+  },
+  "homepage": "https://github.com/LHenri88/NeoCode-Cli#readme"
 }

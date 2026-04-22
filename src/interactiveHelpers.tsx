@@ -138,6 +138,22 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       await showSetupDialog(root, done => <TrustDialog commands={commands} onDone={done} />);
     }
 
+    // Check first-run consent (NeoCode privacy notice)
+    const { hasFirstRunConsent } = await import('./utils/permissions/firstRunConsent.js');
+    if (!hasFirstRunConsent()) {
+      const { FirstRunConsentDialog } = await import('./components/FirstRunConsentDialog.js');
+      const accepted = await showSetupDialog<boolean>(root, done =>
+        <FirstRunConsentDialog onComplete={done} />
+      );
+
+      if (!accepted) {
+        await exitWithMessage(root, 'Privacy consent declined. Exiting NeoCode.', {
+          color: 'yellow',
+          exitCode: 0
+        });
+      }
+    }
+
     // Signal that trust has been verified for this session.
     // GrowthBook checks this to decide whether to include auth headers.
     // Critical for third-party providers: without this, downstream config lookups

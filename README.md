@@ -8,6 +8,7 @@
 
 NeoCode is an open-source, privacy-first coding agent CLI that works with cloud and local AI model providers. Use OpenAI, Gemini, Ollama, Codex, and other backends while keeping one powerful terminal-first workflow with tools, agents, MCP protocol, slash commands, and streaming output.
 
+[![npm](https://img.shields.io/npm/v/neocode-cli?color=cb3837&label=npm)](https://www.npmjs.com/package/neocode-cli)
 [![PR Checks](https://github.com/LHenri88/NeoCode/actions/workflows/pr-checks.yml/badge.svg?branch=main)](https://github.com/LHenri88/NeoCode/actions/workflows/pr-checks.yml)
 [![Release](https://img.shields.io/github/v/tag/LHenri88/NeoCode?label=release&color=0ea5e9)](https://github.com/LHenri88/NeoCode/tags)
 [![Discussions](https://img.shields.io/badge/discussions-open-7c3aed)](https://github.com/LHenri88/NeoCode/discussions)
@@ -35,7 +36,22 @@ NeoCode is an open-source, privacy-first coding agent CLI that works with cloud 
 
 ### Installation
 
-**Standalone Binaries (Recommended)** ⚡ **No Node.js Required!**
+**npm / npx (Recommended for Node.js users)** 📦
+
+Try without installing:
+```bash
+npx neocode-cli
+```
+
+Install globally:
+```bash
+npm install -g neocode-cli
+neocode
+```
+
+---
+
+**Standalone Binaries** ⚡ **No Node.js Required!**
 
 One-line installer (auto-downloads latest release):
 

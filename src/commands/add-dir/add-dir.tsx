@@ -63,6 +63,11 @@ function AddDirError(t0) {
   return t5;
 }
 export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXCommandContext, args?: string): Promise<React.ReactNode> {
+  // Note: Filesystem access is covered by first-run consent (FirstRunConsentDialog)
+  // Users have already approved file system operations when they first launched NeoCode
+  // Additional permission prompts for specific directories are handled by AddWorkspaceDirectory component
+  // See: docs/FIRST_RUN_CONSENT.md for details
+
   const directoryPath = (args ?? '').trim();
   const appState = context.getAppState();
 
