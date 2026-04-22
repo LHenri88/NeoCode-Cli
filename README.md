@@ -1,5 +1,9 @@
 # NeoCode
 
+**🌍 Languages:** [🇧🇷 Português](README.pt.md) | [🇺🇸 English](README.md) | [🇪🇸 Español](README.es.md)
+
+---
+
 **The Next-Generation Agentic CLI for Multi-Provider AI Development**
 
 NeoCode is an open-source, privacy-first coding agent CLI that works with cloud and local AI model providers. Use OpenAI, Gemini, Ollama, Codex, and other backends while keeping one powerful terminal-first workflow with tools, agents, MCP protocol, slash commands, and streaming output.
