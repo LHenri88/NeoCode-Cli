@@ -215,17 +215,17 @@ npm install -g @neocode/cli
 
 ### Method 2: GitHub Direct (Bypasses npm 2FA issues)
 ```bash
-npm install -g https://github.com/Gitlawb/NeoCode
+npm install -g https://github.com/LHenri88/NeoCode
 ```
 
 ### Method 3: Scripted (macOS/Linux)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.sh | bash
 ```
 
 ### Method 4: Scripted (Windows)
 ```powershell
-irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.ps1 | iex
 ```
 
 See [INSTALL_METHODS.md](INSTALL_METHODS.md) for all 8 methods and troubleshooting.
@@ -372,8 +372,8 @@ npm publish --otp=<6-digit-code-from-app>
 
 ## Support
 
-- **Issues:** https://github.com/Gitlawb/NeoCode/issues
-- **Discussions:** https://github.com/Gitlawb/NeoCode/discussions
+- **Issues:** https://github.com/LHenri88/NeoCode/issues
+- **Discussions:** https://github.com/LHenri88/NeoCode/discussions
 - **Documentation:** [docs/](docs/)
 - **Security:** [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)
 

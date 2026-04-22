@@ -3,15 +3,15 @@
 # Quick install script for Windows PowerShell
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.ps1 | iex
+#   irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.ps1 | iex
 #   or
-#   iwr -useb https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.ps1 | iex
+#   iwr -useb https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.ps1 | iex
 #
 
 $ErrorActionPreference = 'Stop'
 
 # Configuration
-$Repo = "Gitlawb/NeoCode"
+$Repo = "LHenri88/NeoCode"
 $InstallDir = "$env:LOCALAPPDATA\NeoCode"
 $BinaryName = "neocode.exe"
 $BinaryFile = "neocode-windows-x64.exe"

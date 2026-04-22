@@ -31,7 +31,7 @@ npm install -g https://gitlawb.com/z6MkqDnb7Siv3Cwj7pGJq4T5EsUisECqR8KpnDLwcaZq5
 
 Or from GitHub mirror:
 ```bash
-npm install -g https://github.com/Gitlawb/NeoCode
+npm install -g https://github.com/LHenri88/NeoCode
 ```
 
 **Benefits:**
@@ -46,7 +46,7 @@ npm install -g https://github.com/Gitlawb/NeoCode
 One-line installer that handles all dependencies:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.sh | bash
 ```
 
 **What it does:**
@@ -60,11 +60,11 @@ curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/instal
 ```bash
 # Install specific version
 export NEOCODE_VERSION=0.1.8
-curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.sh | bash
 
 # Custom install directory
 export INSTALL_DIR=$HOME/.local/bin
-curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.sh | bash
 ```
 
 ---
@@ -74,7 +74,7 @@ curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/instal
 PowerShell installer for Windows 10/11:
 
 ```powershell
-irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.ps1 | iex
 ```
 
 **What it does:**
@@ -86,7 +86,7 @@ irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.ps1 |
 **Custom version:**
 ```powershell
 $env:NEOCODE_VERSION = "0.1.8"
-irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.ps1 | iex
 ```
 
 ---
@@ -346,15 +346,15 @@ After successful installation:
 1. **Read the [User Guide](docs/USER_GUIDE.md)** - Learn NeoCode basics
 2. **Explore [Commands](docs/COMMANDS.md)** - Discover slash commands
 3. **Check [Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
-4. **Join [Community](https://github.com/Gitlawb/NeoCode/discussions)** - Get help and share
+4. **Join [Community](https://github.com/LHenri88/NeoCode/discussions)** - Get help and share
 
 ---
 
 ## 🔗 Quick Links
 
 - **Documentation:** [docs/](docs/)
-- **GitHub Issues:** https://github.com/Gitlawb/NeoCode/issues
-- **Discussions:** https://github.com/Gitlawb/NeoCode/discussions
+- **GitHub Issues:** https://github.com/LHenri88/NeoCode/issues
+- **Discussions:** https://github.com/LHenri88/NeoCode/discussions
 - **Security:** [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)
 
 ---
@@ -400,4 +400,4 @@ Workflow `.github/workflows/release.yml` will automatically:
 
 ---
 
-**Need Help?** Open an issue: https://github.com/Gitlawb/NeoCode/issues
+**Need Help?** Open an issue: https://github.com/LHenri88/NeoCode/issues

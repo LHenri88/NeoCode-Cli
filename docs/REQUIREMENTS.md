@@ -589,4 +589,4 @@ After verifying requirements:
 
 ---
 
-**Questions?** Check [Troubleshooting](USER_GUIDE.md#troubleshooting) or open a [GitHub Discussion](https://github.com/Gitlawb/NeoCode/discussions)
+**Questions?** Check [Troubleshooting](USER_GUIDE.md#troubleshooting) or open a [GitHub Discussion](https://github.com/LHenri88/NeoCode/discussions)

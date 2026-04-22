@@ -264,12 +264,12 @@ Created type stubs for removed proprietary modules to prevent runtime errors:
 
 2. **GitHub Direct:**
    ```bash
-   npm install -g https://github.com/Gitlawb/NeoCode
+   npm install -g https://github.com/LHenri88/NeoCode
    ```
 
 3. **Local Development:**
    ```bash
-   git clone https://github.com/Gitlawb/NeoCode.git
+   git clone https://github.com/LHenri88/NeoCode.git
    cd NeoCode
    bun install
    bun run build
@@ -278,12 +278,12 @@ Created type stubs for removed proprietary modules to prevent runtime errors:
 
 4. **Scripted (macOS/Linux):**
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.sh | bash
    ```
 
 5. **Scripted (Windows):**
    ```powershell
-   irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/scripts/install.ps1 | iex
+   irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/scripts/install.ps1 | iex
    ```
 
 ---
@@ -430,4 +430,4 @@ The NeoCode repository is **production-ready** from a security perspective:
 
 ---
 
-**For Questions or Issues:** Open an issue at https://github.com/Gitlawb/NeoCode/issues
+**For Questions or Issues:** Open an issue at https://github.com/LHenri88/NeoCode/issues

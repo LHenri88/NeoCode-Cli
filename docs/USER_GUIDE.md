@@ -816,8 +816,8 @@ Check "Voice Input" section.
    ```
 
 3. **Community:**
-   - [GitHub Discussions](https://github.com/Gitlawb/NeoCode/discussions)
-   - [GitHub Issues](https://github.com/Gitlawb/NeoCode/issues)
+   - [GitHub Discussions](https://github.com/LHenri88/NeoCode/discussions)
+   - [GitHub Issues](https://github.com/LHenri88/NeoCode/issues)
 
 4. **Documentation:**
    - [Installation Guide](INSTALLATION.md)
@@ -841,7 +841,7 @@ After mastering the basics:
    - Create provider routing strategies
 
 3. **Contribute**
-   - Share tips in [Discussions](https://github.com/Gitlawb/NeoCode/discussions)
+   - Share tips in [Discussions](https://github.com/LHenri88/NeoCode/discussions)
    - Report bugs or request features
    - Contribute code (see [CONTRIBUTING.md](../CONTRIBUTING.md))
 

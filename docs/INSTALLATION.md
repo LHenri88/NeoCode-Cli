@@ -583,8 +583,8 @@ After installation:
 1. **Read the [User Guide](USER_GUIDE.md)** - Learn how to use NeoCode effectively
 2. **Explore [Commands](COMMANDS.md)** - Discover all slash commands
 3. **Configure Providers** - Set up multiple providers for different use cases
-4. **Join the [Community](https://github.com/Gitlawb/NeoCode/discussions)** - Get help and share feedback
+4. **Join the [Community](https://github.com/LHenri88/NeoCode/discussions)** - Get help and share feedback
 
 ---
 
-**Need Help?** Open an issue on [GitHub](https://github.com/Gitlawb/NeoCode/issues) or join our [Discussions](https://github.com/Gitlawb/NeoCode/discussions)
+**Need Help?** Open an issue on [GitHub](https://github.com/LHenri88/NeoCode/issues) or join our [Discussions](https://github.com/LHenri88/NeoCode/discussions)

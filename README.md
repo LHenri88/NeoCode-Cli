@@ -4,9 +4,9 @@
 
 NeoCode is an open-source, privacy-first coding agent CLI that works with cloud and local AI model providers. Use OpenAI, Gemini, Ollama, Codex, and other backends while keeping one powerful terminal-first workflow with tools, agents, MCP protocol, slash commands, and streaming output.
 
-[![PR Checks](https://github.com/Gitlawb/NeoCode/actions/workflows/pr-checks.yml/badge.svg?branch=main)](https://github.com/Gitlawb/NeoCode/actions/workflows/pr-checks.yml)
-[![Release](https://img.shields.io/github/v/tag/Gitlawb/NeoCode?label=release&color=0ea5e9)](https://github.com/Gitlawb/NeoCode/tags)
-[![Discussions](https://img.shields.io/badge/discussions-open-7c3aed)](https://github.com/Gitlawb/NeoCode/discussions)
+[![PR Checks](https://github.com/LHenri88/NeoCode/actions/workflows/pr-checks.yml/badge.svg?branch=main)](https://github.com/LHenri88/NeoCode/actions/workflows/pr-checks.yml)
+[![Release](https://img.shields.io/github/v/tag/LHenri88/NeoCode?label=release&color=0ea5e9)](https://github.com/LHenri88/NeoCode/tags)
+[![Discussions](https://img.shields.io/badge/discussions-open-7c3aed)](https://github.com/LHenri88/NeoCode/discussions)
 [![Security Policy](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 [![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
 
@@ -54,19 +54,19 @@ One-line installer (auto-downloads latest release):
 
 macOS / Linux:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.sh | bash
 ```
 
 Windows PowerShell:
 ```powershell
-irm https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.ps1 | iex
+irm https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.ps1 | iex
 ```
 
 Or download manually:
-- [Windows x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-windows-x64.exe)
-- [Linux x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-linux-x64)
-- [macOS x64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-macos-x64)
-- [macOS ARM64](https://github.com/Gitlawb/NeoCode/releases/latest/download/neocode-macos-arm64)
+- [Windows x64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-windows-x64.exe)
+- [Linux x64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-linux-x64)
+- [macOS x64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-macos-x64)
+- [macOS ARM64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-macos-arm64)
 
 Build from source: see [STANDALONE_BUILD.md](STANDALONE_BUILD.md)
 
@@ -355,8 +355,8 @@ neocode/
 
 ## 🤝 Community
 
-- **[GitHub Discussions](https://github.com/Gitlawb/NeoCode/discussions)** - Q&A, ideas, and community conversation
-- **[GitHub Issues](https://github.com/Gitlawb/NeoCode/issues)** - Bug reports and feature requests
+- **[GitHub Discussions](https://github.com/LHenri88/NeoCode/discussions)** - Q&A, ideas, and community conversation
+- **[GitHub Issues](https://github.com/LHenri88/NeoCode/issues)** - Bug reports and feature requests
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to NeoCode
 - **[Security Policy](SECURITY.md)** - Vulnerability reporting
 

@@ -819,7 +819,7 @@ exports.activate = activate;
 
 For complete working examples, see:
 
-- [NeoCode Examples](https://github.com/Gitlawb/neocode-examples) (planned)
+- [NeoCode Examples](https://github.com/LHenri88/neocode-examples) (planned)
 - `plugins/` directory (official plugins)
 - `vscode-extension/` (VS Code integration)
 
@@ -828,8 +828,8 @@ For complete working examples, see:
 ## Support
 
 - **Documentation:** [docs/](.)
-- **Discussions:** [GitHub Discussions](https://github.com/Gitlawb/NeoCode/discussions)
-- **Issues:** [GitHub Issues](https://github.com/Gitlawb/NeoCode/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/LHenri88/NeoCode/discussions)
+- **Issues:** [GitHub Issues](https://github.com/LHenri88/NeoCode/issues)
 - **Contributing:** [CONTRIBUTING.md](../CONTRIBUTING.md)
 
 ---

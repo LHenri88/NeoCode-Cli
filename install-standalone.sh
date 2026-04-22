@@ -4,9 +4,9 @@
 # Quick install script for Linux/macOS
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.sh | bash
 #   or
-#   wget -qO- https://raw.githubusercontent.com/Gitlawb/NeoCode/main/install-standalone.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/LHenri88/NeoCode/main/install-standalone.sh | bash
 #
 
 set -e
@@ -19,7 +19,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO="Gitlawb/NeoCode"
+REPO="LHenri88/NeoCode"
 INSTALL_DIR="$HOME/.local/bin"
 BINARY_NAME="neocode"
 
