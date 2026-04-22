@@ -10,7 +10,7 @@ NeoCode is an open-source, privacy-first coding agent CLI that works with cloud 
 [![Security Policy](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 [![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
 
-[Quick Start](#-quick-start) | [Installation](#-installation) | [Features](#-features) | [Documentation](#-documentation) | [Providers](#-supported-providers) | [Community](#-community)
+[Quick Start](#-quick-start) | [Installation](INSTALL.md) | [Features](#-features) | [Documentation](#-documentation) | [Providers](#-supported-providers) | [Community](#-community)
 
 ---
 
@@ -31,24 +31,7 @@ NeoCode is an open-source, privacy-first coding agent CLI that works with cloud 
 
 ### Installation
 
-**Universal Installer (Recommended)**
-
-macOS / Linux:
-```bash
-curl -fsSL https://get.neocode.dev/install.sh | bash
-```
-
-Windows PowerShell:
-```powershell
-irm https://get.neocode.dev/install.ps1 | iex
-```
-
-**NPM**
-```bash
-npm install -g @neocode/cli
-```
-
-**Standalone Binaries (No Node.js Required)** ⚡ **Recommended for End Users**
+**Standalone Binaries (Recommended)** ⚡ **No Node.js Required!**
 
 One-line installer (auto-downloads latest release):
 
@@ -68,7 +51,26 @@ Or download manually:
 - [macOS x64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-macos-x64)
 - [macOS ARM64](https://github.com/LHenri88/NeoCode/releases/latest/download/neocode-macos-arm64)
 
-Build from source: see [STANDALONE_BUILD.md](STANDALONE_BUILD.md)
+**Build from Source (Developers):**
+
+```bash
+# Clone repository
+git clone https://github.com/LHenri88/NeoCode-Cli.git
+cd NeoCode-Cli
+
+# Install dependencies
+bun install
+
+# Build regular distribution
+bun run build
+
+# Or build standalone binaries
+bun run build:standalone:all
+```
+
+See [STANDALONE_BUILD.md](STANDALONE_BUILD.md) for detailed build instructions.
+
+**Dependencies:**
 
 If the install reports `ripgrep not found`, install ripgrep system-wide:
 
