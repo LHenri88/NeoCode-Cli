@@ -1,3 +1,5 @@
+<div align="center">
+
 # NeoCode
 
 **🌍 Idiomas:** [🇧🇷 Português](README.pt.md) | [🇺🇸 English](README.md) | [🇪🇸 Español](README.es.md)
@@ -5,6 +7,8 @@
 ---
 
 **La CLI Agéntica de Próxima Generación para Desarrollo con IA Multi-Proveedor**
+
+</div>
 
 NeoCode es una CLI de agente de codificación de código abierto y centrada en la privacidad que funciona con proveedores de modelos de IA locales y en la nube. Usa OpenAI, Gemini, Ollama, Codex y otros backends manteniendo un flujo de trabajo potente basado en terminal con herramientas, agentes, protocolo MCP, comandos slash y salida en streaming.
 

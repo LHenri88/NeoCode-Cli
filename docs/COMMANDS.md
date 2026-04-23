@@ -594,6 +594,112 @@ Complete reference for all slash commands available in NeoCode.
 
 ## Advanced Features
 
+### `/import`
+
+**Description:** Import files or skill sets from another local project
+
+**Usage:**
+```
+/import <path> [--target <dir>] [--overwrite] [--dry-run]
+```
+
+**Options:**
+- `<path>` - Path to the source project or file
+- `--target <dir>` - Target directory for imported files
+- `--overwrite` - Overwrite existing files
+- `--dry-run` - Preview changes without applying
+
+**Examples:**
+```
+/import ../other-project/skills
+/import ~/templates/react-component --target src/components
+/import ./config.yaml --overwrite
+```
+
+---
+
+### `/channel`
+
+**Description:** Configure notification channels (Telegram, Discord, Webhook)
+
+**Usage:**
+```
+/channel <telegram|discord|webhook|status> [args...]
+```
+
+**Subcommands:**
+- `telegram` - Configure Telegram bot notifications
+- `discord` - Configure Discord webhook notifications
+- `webhook` - Configure custom webhook endpoint
+- `status` - Show current channel configuration
+
+**Examples:**
+```
+/channel telegram        # Setup Telegram notifications
+/channel discord         # Setup Discord webhook
+/channel status          # View configured channels
+```
+
+**Use Cases:**
+- Get notified when long-running tasks complete
+- Receive BTW responses on mobile
+- Monitor background sessions
+
+---
+
+### `/preview`
+
+**Description:** Manage the web preview dev server (on/off/status/open)
+
+**Usage:**
+```
+/preview [on|off|status|open]
+```
+
+**Subcommands:**
+- `on` - Start the preview dev server
+- `off` - Stop the preview dev server
+- `status` - Show server status (default)
+- `open` - Open preview in browser
+
+**Examples:**
+```
+/preview on              # Start preview server
+/preview open            # Open in browser
+/preview off             # Stop server
+```
+
+**Features:**
+- Live reload on file changes
+- Hot module replacement
+- Preview HTML/React/Vue components
+- Test web interfaces locally
+
+---
+
+### `/language`
+
+**Description:** Change the interface language
+
+**Usage:**
+```
+/language [en|pt|es]
+```
+
+**Available Languages:**
+- `en` - English
+- `pt` - Português (Portuguese)
+- `es` - Español (Spanish)
+
+**Examples:**
+```
+/language pt             # Switch to Portuguese
+/language en             # Switch to English
+/language es             # Switch to Spanish
+```
+
+---
+
 ### `/voice`
 
 **Description:** Toggle voice input mode
