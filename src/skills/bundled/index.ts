@@ -6,6 +6,10 @@ import { registerDebugSkill } from './debug.js'
 import { registerKeybindingsSkill } from './keybindings.js'
 import { registerSimplifySkill } from './simplify.js'
 import { registerUpdateConfigSkill } from './updateConfig.js'
+import { registerCavemanSkill } from './caveman.js'
+import { registerCavemanCommitSkill } from './cavemanCommit.js'
+import { registerCavemanCompressSkill } from './cavemanCompress.js'
+import { registerCavemanReviewSkill } from './cavemanReview.js'
 
 /**
  * Initialize all bundled skills.
@@ -22,6 +26,10 @@ export function initBundledSkills(): void {
   registerDebugSkill()
   registerSimplifySkill()
   registerBatchSkill()
+  registerCavemanSkill()
+  registerCavemanCommitSkill()
+  registerCavemanReviewSkill()
+  registerCavemanCompressSkill()
   if (feature('KAIROS') || feature('KAIROS_DREAM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerDreamSkill } = require('./dream.js')
