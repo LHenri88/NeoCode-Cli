@@ -4361,9 +4361,9 @@ async function run(): Promise<CommanderCommand> {
     await update();
   });
 
-  // claude up — run the project's CLAUDE.md "# claude up" setup instructions.
+  // neo up — run the project's NEO.md "# neo up" setup instructions.
   if ("external" === 'ant') {
-    program.command('up').description('[internal-only] Initialize or upgrade the local dev environment using the "# claude up" section of the nearest CLAUDE.md').action(async () => {
+    program.command('up').description('[internal-only] Initialize or upgrade the local dev environment using the "# neo up" section of the nearest NEO.md').action(async () => {
       const {
         up
       } = await import('src/cli/up.js');

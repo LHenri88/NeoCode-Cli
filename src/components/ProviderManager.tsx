@@ -32,15 +32,6 @@ import {
   respawnCLI,
   listOpenRouterModels,
   fetchModelsForPreset,
-  isGqwenInstalled,
-  installGqwenAuth,
-  runGqwenAdd,
-  hasGqwenAccounts,
-  isGqwenProxyRunning,
-  startGqwenServeBackground,
-  listGqwenModels,
-  GQWEN_PROXY_BASE_URL,
-  GQWEN_DEFAULT_MODEL,
   SUGGESTED_OLLAMA_MODELS,
   OLLAMA_CLOUD_BASE_URL,
   DEFAULT_OLLAMA_BASE_URL,
@@ -72,7 +63,6 @@ type Screen =
   | 'ollama-setup'
   | 'openrouter-setup'
   | 'preset-api-setup'
-  | 'qwen-setup'
   | 'select-active'
   | 'select-edit'
   | 'select-delete'
@@ -177,6 +167,21 @@ const PRESET_MODEL_OPTIONS: Partial<Record<ProviderPreset, Array<{ value: string
     { value: 'google/gemini-2.5-pro-preview', description: 'Gemini 2.5 Pro — powerful reasoning' },
     { value: 'deepseek/deepseek-chat', description: 'DeepSeek V3 — cost-effective' },
     { value: 'meta-llama/llama-3.3-70b-instruct', description: 'Llama 3.3 70B — open source' },
+  ],
+  nvidia: [
+    { value: 'meta/llama-3.3-70b-instruct', description: 'Llama 3.3 70B — best free coding model (recommended)' },
+    { value: 'meta/llama-3.1-8b-instruct', description: 'Llama 3.1 8B — ultra fast, free' },
+    { value: 'deepseek-ai/deepseek-r1', description: 'DeepSeek R1 — reasoning model, free' },
+    { value: 'mistralai/mistral-7b-instruct-v0.3', description: 'Mistral 7B — lightweight, free' },
+    { value: 'microsoft/phi-3-medium-128k-instruct', description: 'Phi-3 Medium 128k — long context, free' },
+    { value: 'nvidia/llama-3.3-nemotron-super-49b-v1', description: 'Nemotron Super 49B — NVIDIA flagship' },
+  ],
+  'github-models': [
+    { value: 'meta/Meta-Llama-3.3-70B-Instruct', description: 'Llama 3.3 70B — best open source (recommended)' },
+    { value: 'microsoft/Phi-4', description: 'Phi-4 — Microsoft flagship, small & capable' },
+    { value: 'deepseek/DeepSeek-V3-0324', description: 'DeepSeek V3 — excellent coding' },
+    { value: 'mistral-ai/Mistral-Large-2411', description: 'Mistral Large — strong multilingual' },
+    { value: 'openai/gpt-4o-mini', description: 'GPT-4o mini — fast, OpenAI (requires Copilot)' },
   ],
 }
 
@@ -331,12 +336,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   const [presetApiModels, setPresetApiModels] = React.useState<DynamicModel[]>([])
   const [presetApiError, setPresetApiError] = React.useState<string | undefined>()
 
-  // gqwen-auth (Qwen proxy) setup state
-  const [qwenStep, setQwenStep] = React.useState<'checking' | 'installing' | 'authenticating' | 'starting-proxy' | 'model' | 'error'>('checking')
-  const [qwenStatusMsg, setQwenStatusMsg] = React.useState('')
-  const [qwenModels, setQwenModels] = React.useState<DynamicModel[]>([])
-  const [qwenError, setQwenError] = React.useState<string | undefined>()
-
   const currentStep = FORM_STEPS[formStepIndex] ?? FORM_STEPS[0]
   const currentStepKey = currentStep.key
   const currentValue = draft[currentStepKey]
@@ -411,79 +410,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       const models = await listOllamaModelsFromCLI()
       setOllamaModels(models)
       setOllamaLocalStep('select')
-    })()
-  }, [screen])
-
-  // Full auto-setup for gqwen when qwen-setup screen becomes active
-  React.useEffect(() => {
-    if (screen !== 'qwen-setup') return
-    void (async () => {
-      // ── Step 1: Ensure gqwen is installed ──────────────────────────────────
-      setQwenStep('checking')
-      setQwenStatusMsg('Checking gqwen-auth installation...')
-      let installed = await isGqwenInstalled()
-      if (!installed) {
-        setQwenStep('installing')
-        setQwenStatusMsg('Installing gqwen-auth (bun install -g gqwen-auth)...')
-        const { success, error } = await installGqwenAuth()
-        if (!success) {
-          setQwenError(`Install failed: ${error ?? 'unknown error'}. Run manually: bun install -g gqwen-auth`)
-          setQwenStep('error')
-          return
-        }
-        installed = await isGqwenInstalled()
-        if (!installed) {
-          setQwenError('gqwen not found after install. Try: bun install -g gqwen-auth then restart NeoCode.')
-          setQwenStep('error')
-          return
-        }
-      }
-
-      // ── Step 2: Check proxy (maybe already running) ────────────────────────
-      const alreadyRunning = await isGqwenProxyRunning()
-      if (alreadyRunning) {
-        const { models } = await listGqwenModels()
-        if (models.length > 0) { setQwenModels(models); setQwenStep('model'); return }
-      }
-
-      // ── Step 3: Ensure there is at least one authenticated account ─────────
-      const hasAccounts = await hasGqwenAccounts()
-      if (!hasAccounts) {
-        setQwenStep('authenticating')
-        setQwenStatusMsg('Opening browser for Qwen OAuth login... Authorize in the browser, then return here.')
-        const { success, output } = await runGqwenAdd()
-        if (!success) {
-          setQwenError(`Authentication failed. ${output || 'Run: gqwen add'}`)
-          setQwenStep('error')
-          return
-        }
-      }
-
-      // ── Step 4: Start the proxy ────────────────────────────────────────────
-      setQwenStep('starting-proxy')
-      setQwenStatusMsg('Starting gqwen proxy at localhost:3099...')
-      startGqwenServeBackground()
-
-      // Poll up to 15s for proxy to come up
-      let attempts = 0
-      await new Promise<void>(res => {
-        const poll = setInterval(async () => {
-          attempts++
-          const up = await isGqwenProxyRunning()
-          if (up) { clearInterval(poll); res(); return }
-          if (attempts >= 30) { clearInterval(poll); res() }
-        }, 500)
-      })
-
-      // ── Step 5: Fetch models ───────────────────────────────────────────────
-      const { models, error } = await listGqwenModels()
-      if (models.length === 0) {
-        setQwenError(error ?? 'Proxy started but returned no models. Run: gqwen add')
-        setQwenStep('error')
-      } else {
-        setQwenModels(models)
-        setQwenStep('model')
-      }
     })()
   }, [screen])
 
@@ -640,7 +566,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     }
 
     // Providers with live API model listing (key → fetch → select)
-    const dynamicPresets: ProviderPreset[] = ['openai', 'deepseek', 'groq', 'mistral', 'together', 'moonshotai', 'gemini', 'anthropic']
+    const dynamicPresets: ProviderPreset[] = ['openai', 'deepseek', 'groq', 'mistral', 'together', 'moonshotai', 'gemini', 'anthropic', 'nvidia', 'github-models']
     if (dynamicPresets.includes(preset)) {
       setPresetApiPreset(preset)
       setPresetApiStep('key')
@@ -648,15 +574,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       setPresetApiModels([])
       setPresetApiError(undefined)
       setScreen('preset-api-setup')
-      return
-    }
-
-    // gqwen-auth proxy flow
-    if (preset === 'qwen') {
-      setQwenStep('checking')
-      setQwenModels([])
-      setQwenError(undefined)
-      setScreen('qwen-setup')
       return
     }
 
@@ -812,8 +729,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       } else if (
         screen === 'ollama-setup' ||
         screen === 'openrouter-setup' ||
-        screen === 'preset-api-setup' ||
-        screen === 'qwen-setup'
+        screen === 'preset-api-setup'
       ) {
         setScreen('select-preset')
       }
@@ -824,8 +740,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         screen === 'form' ||
         screen === 'ollama-setup' ||
         screen === 'openrouter-setup' ||
-        screen === 'preset-api-setup' ||
-        screen === 'qwen-setup',
+        screen === 'preset-api-setup',
     },
   )
 
@@ -887,9 +802,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         description: 'OpenRouter OpenAI-compatible endpoint',
       },
       {
-        value: 'qwen',
-        label: 'Qwen (gqwen-auth)',
-        description: 'Qwen Plus/Max via local gqwen-auth proxy (free OAuth)',
+        value: 'nvidia',
+        label: 'NVIDIA NIM',
+        description: 'NVIDIA NIM — free-tier LLMs (Llama, Mistral, DeepSeek-R1)',
+      },
+      {
+        value: 'github-models',
+        label: 'GitHub Models',
+        description: 'GitHub Models — free inference with GitHub token',
       },
       {
         value: 'lmstudio',
@@ -1399,10 +1319,22 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     if (presetApiStep === 'key') {
       const isGemini = presetApiPreset === 'gemini'
       const isAnthropicPreset = presetApiPreset === 'anthropic'
+      const isNvidia = presetApiPreset === 'nvidia'
+      const isGithubModels = presetApiPreset === 'github-models'
+      const keyPlaceholder = isAnthropicPreset ? 'sk-ant-...'
+        : isGemini ? 'AIza...'
+        : isNvidia ? 'nvapi-...'
+        : isGithubModels ? 'ghp_... or github_pat_...'
+        : 'sk-...'
+      const keyHint = isGithubModels
+        ? 'GitHub Personal Access Token (Settings → Developer settings → Fine-grained tokens)'
+        : isNvidia
+        ? 'Get a free key at https://build.nvidia.com — NVIDIA_API_KEY env var'
+        : `Enter your ${providerLabel} API key to fetch available models.`
       return (
         <Box flexDirection="column" gap={1}>
           <Text color="remember" bold>{providerLabel} — API key</Text>
-          <Text dimColor>Enter your {providerLabel} API key to fetch available models.</Text>
+          <Text dimColor>{keyHint}</Text>
           <Box flexDirection="row" gap={1}>
             <Text>›</Text>
             <TextInput
@@ -1430,7 +1362,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               }}
               focus={true}
               showCursor={true}
-              placeholder={isAnthropicPreset ? 'sk-ant-...' : isGemini ? 'AIza...' : 'sk-...'}
+              placeholder={keyPlaceholder}
               columns={60}
               cursorOffset={presetApiKey.length}
               onChangeCursorOffset={() => { }}
@@ -1477,82 +1409,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
           onCancel={() => setPresetApiStep('key')}
         />
         <Text dimColor>↑↓ navigate · Enter select · Esc back to key entry</Text>
-      </Box>
-    )
-  }
-
-  // ── gqwen-auth (Qwen proxy) setup ─────────────────────────────────────────
-  function renderQwenSetup(): React.ReactNode {
-    const stepIcon = (label: string) => (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>Qwen — {label}</Text>
-        <Text dimColor>{qwenStatusMsg}</Text>
-        <Text dimColor>This may take a moment...</Text>
-      </Box>
-    )
-
-    if (qwenStep === 'checking') return stepIcon('checking...')
-    if (qwenStep === 'installing') return stepIcon('installing gqwen-auth...')
-    if (qwenStep === 'starting-proxy') return stepIcon('starting proxy at localhost:3099...')
-
-    if (qwenStep === 'authenticating') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>Qwen — browser authentication</Text>
-          <Text dimColor>{qwenStatusMsg}</Text>
-          <Text dimColor>A browser window has been opened. Log in with your Qwen account and</Text>
-          <Text dimColor>click Authorize. NeoCode will continue automatically when done.</Text>
-        </Box>
-      )
-    }
-
-    if (qwenStep === 'error') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>Qwen — setup failed</Text>
-          <Text color="error">{qwenError}</Text>
-          <Text dimColor>You can retry by going back and selecting Qwen again.</Text>
-          <Text dimColor>Esc to go back</Text>
-        </Box>
-      )
-    }
-
-    // ── Model selection ────────────────────────────────────────────────────
-    const modelOptions = qwenModels.length > 0
-      ? qwenModels.map(m => ({
-        value: m.value,
-        label: m.value,
-        description: m.description !== m.value ? m.description : undefined,
-      }))
-      : [
-        { value: 'qwen3-coder-plus', label: 'qwen3-coder-plus', description: 'Qwen3 Coder Plus — best coding (recommended)' },
-        { value: 'qwen-plus', label: 'qwen-plus', description: 'Qwen Plus — balanced' },
-        { value: 'qwen-max', label: 'qwen-max', description: 'Qwen Max — most capable' },
-        { value: 'qwen-turbo', label: 'qwen-turbo', description: 'Qwen Turbo — fastest' },
-      ]
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>Qwen (gqwen-auth) — select model</Text>
-        <Text dimColor>Served via gqwen proxy at {GQWEN_PROXY_BASE_URL}/v1</Text>
-        <Select
-          options={modelOptions}
-          defaultValue={GQWEN_DEFAULT_MODEL}
-          defaultFocusValue={GQWEN_DEFAULT_MODEL}
-          inlineDescriptions
-          visibleOptionCount={Math.min(10, modelOptions.length)}
-          onChange={(value: string) => {
-            saveProfile({
-              provider: 'openai',
-              name: `Qwen · ${value}`,
-              baseUrl: `${GQWEN_PROXY_BASE_URL}/v1`,
-              model: value,
-              apiKey: '',
-            })
-          }}
-          onCancel={() => setScreen('select-preset')}
-        />
-        <Text dimColor>↑↓ navigate · Enter select · Esc back</Text>
       </Box>
     )
   }
@@ -1743,9 +1599,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       break
     case 'preset-api-setup':
       content = renderPresetApiSetup()
-      break
-    case 'qwen-setup':
-      content = renderQwenSetup()
       break
     case 'select-active':
       content = renderProfileSelection(

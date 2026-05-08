@@ -1,11 +1,16 @@
 /**
- * First Run Consent - One-time privacy agreement on initial CLI usage
+ * First Run Consent - One-time approval on initial CLI usage
  *
- * Shows a comprehensive privacy notice covering all tool usage when user
- * first launches NeoCode. Once accepted, never shown again (tracked by user ID).
+ * Shows a concise first-run notice explaining local workspace access when the
+ * user first launches NeoCode. Once accepted, never shown again (tracked by user ID).
  */
 
-import { getGlobalConfig, saveGlobalConfig } from '../config.js'
+import {
+  getGlobalConfig,
+  getPreferredLanguage,
+  saveGlobalConfig,
+  type PreferredLanguage,
+} from '../config.js'
 import { randomBytes } from 'crypto'
 import { platform, userInfo } from 'os'
 
@@ -100,110 +105,87 @@ export function saveFirstRunConsent(consentGiven: boolean): void {
 }
 
 /**
- * Get first-run consent message
+ * Get first-run consent message in the current interface language
  */
 export function getFirstRunConsentMessage(): string {
-  return `
+  const lang = getPreferredLanguage()
+
+  const messages: Record<PreferredLanguage, string> = {
+    en: `
 ╔═══════════════════════════════════════════════════════════════════╗
-║                                                                   ║
-║                    🔒 NeoCode Privacy Notice                      ║
-║                                                                   ║
+║                    Local Workspace Access                        ║
 ╚═══════════════════════════════════════════════════════════════════╝
 
-Welcome to NeoCode - Privacy-First Agentic CLI
+On first use, NeoCode needs your approval to let agents/LLMs work in
+your local folders through the CLI.
 
-Before you begin, please review what NeoCode can access:
+With your approval, NeoCode can:
+• view files and folders in the workspace you open here
+• create and edit files when you ask
+• run commands, with approval prompts for sensitive actions
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 📁 FILE SYSTEM ACCESS                                           │
-├─────────────────────────────────────────────────────────────────┤
-│ • Read files from your computer (for code analysis)            │
-│ • Write files to your computer (for code generation)           │
-│ • Browse directory structure                                    │
-│                                                                 │
-│ When: When you ask NeoCode to read, write, or analyze files    │
-│ Scope: Only directories you explicitly work in                 │
-└─────────────────────────────────────────────────────────────────┘
+Your control:
+• access is limited to the directories you use in NeoCode
+• you can review or change permissions later
+• press [R] to read the full privacy policy
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 💻 SYSTEM COMMANDS                                              │
-├─────────────────────────────────────────────────────────────────┤
-│ • Execute bash/PowerShell commands                             │
-│ • Run build scripts (npm, pip, etc.)                          │
-│ • Git operations                                              │
-│                                                                 │
-│ When: When you ask NeoCode to run commands                     │
-│ Protection: Permission system for destructive operations       │
-└─────────────────────────────────────────────────────────────────┘
+Allow local workspace access for NeoCode?
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 🌐 NETWORK ACCESS (Optional)                                    │
-├─────────────────────────────────────────────────────────────────┤
-│ • Web search (DuckDuckGo)                                      │
-│ • Fetch web pages for analysis                                │
-│ • Download AI models (Ollama)                                 │
-│                                                                 │
-│ When: When you ask for web search or online information        │
-│ Privacy: No tracking, no analytics                            │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ 🖥️  COMPUTER USE (Disabled by Default)                          │
-├─────────────────────────────────────────────────────────────────┤
-│ • Screenshot capture                                            │
-│ • Mouse/keyboard control                                       │
-│                                                                 │
-│ When: Only if you explicitly enable with /computer-use on      │
-│ Protection: Requires additional approval per action            │
-└─────────────────────────────────────────────────────────────────┘
-
-╔═══════════════════════════════════════════════════════════════════╗
-║                     🛡️  PRIVACY GUARANTEES                        ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-✅ ZERO TELEMETRY - No data sent to external servers
-✅ LOCAL-FIRST - All operations stay on your machine
-✅ VERIFIABLE - Run 'bun run verify:privacy' to audit code
-✅ PERMISSION GATES - Approve destructive operations before execution
-✅ OPEN SOURCE - Full transparency of all operations
-
-╔═══════════════════════════════════════════════════════════════════╗
-║                       📋 YOUR CONTROL                             ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-You can always:
-• /permissions - Manage tool permissions
-• /sandbox - Enable command sandboxing (Docker)
-• /computer-use off - Disable screen control
-• ~/.claude/settings.json - Full configuration control
-
-╔═══════════════════════════════════════════════════════════════════╗
-║                         ⚖️  CONSENT                               ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-By continuing, you acknowledge that NeoCode will:
-• Access files in directories where you run it
-• Execute commands you approve via permission system
-• Use AI providers you configure (OpenAI, Ollama, Gemini, etc.)
-
-All operations require your explicit or implicit approval through:
-• Working directory scope (you cd into the project)
-• Permission prompts for sensitive operations
-• Configuration in settings files
-
-This notice appears once. You can review it anytime at:
-docs/PRIVACY_SYSTEM.md
-
-═══════════════════════════════════════════════════════════════════
-
-Do you accept these terms and conditions?
-
-  [Y] Yes, I understand and accept
-  [N] No, exit NeoCode
+  [Y] Allow
+  [N] Exit
   [R] Read full privacy policy
+`,
+    pt: `
+╔═══════════════════════════════════════════════════════════════════╗
+║                 Acesso ao Workspace Local                        ║
+╚═══════════════════════════════════════════════════════════════════╝
 
-═══════════════════════════════════════════════════════════════════
-`.trim()
+No primeiro uso, o NeoCode precisa da sua autorização para que os
+agents/LLMs trabalhem nas suas pastas locais pelo CLI.
+
+Com sua autorização, o NeoCode pode:
+• ver arquivos e pastas do workspace aberto aqui
+• criar e editar arquivos quando você pedir
+• executar comandos, com aprovação para ações sensíveis
+
+Seu controle:
+• o acesso fica limitado aos diretórios usados no NeoCode
+• você pode revisar ou mudar as permissões depois
+• pressione [R] para ler a política completa
+
+Autorizar o acesso ao workspace local pelo NeoCode?
+
+  [Y] Autorizar
+  [N] Sair
+  [R] Ler política completa
+`,
+    es: `
+╔═══════════════════════════════════════════════════════════════════╗
+║               Acceso al Workspace Local                          ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+En el primer uso, NeoCode necesita tu autorización para que los
+agents/LLMs trabajen en tus carpetas locales desde la CLI.
+
+Con tu autorización, NeoCode puede:
+• ver archivos y carpetas del workspace abierto aquí
+• crear y editar archivos cuando lo pidas
+• ejecutar comandos, con aprobación para acciones sensibles
+
+Tu control:
+• el acceso se limita a los directorios que uses en NeoCode
+• puedes revisar o cambiar los permisos después
+• pulsa [R] para leer la política completa
+
+¿Autorizar el acceso al workspace local para NeoCode?
+
+  [Y] Autorizar
+  [N] Salir
+  [R] Leer política completa
+`,
+  }
+
+  return (messages[lang] ?? messages.en).trim()
 }
 
 /**

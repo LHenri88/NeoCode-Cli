@@ -20,7 +20,7 @@ import { safeParseJSON } from './json.js'
 import { lazySchema } from './lazySchema.js'
 import { jsonStringify } from './slowOperations.js'
 
-const LOCK_FILE_REL = join('.claude', 'scheduled_tasks.lock')
+const LOCK_FILE_REL = join('.neo', 'scheduled_tasks.lock')
 
 const schedulerLockSchema = lazySchema(() =>
   z.object({

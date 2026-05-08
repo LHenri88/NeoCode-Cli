@@ -895,6 +895,33 @@ export function getAssistantMessageFromError(
 
     // External OpenAI-compatible provider — "Please run /login" is wrong advice
     if (isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)) {
+      // 403 with subscription/upgrade message → model access issue, not a bad key
+      const isSubscriptionError =
+        error.status === 403 &&
+        (error.message.toLowerCase().includes('subscription') ||
+          error.message.toLowerCase().includes('upgrade') ||
+          error.message.toLowerCase().includes('requires a'))
+      if (isSubscriptionError) {
+        return createAssistantAPIErrorMessage({
+          error: 'authentication_failed',
+          content: getIsNonInteractiveSession()
+            ? `Model access denied by provider (subscription required). ${API_ERROR_MESSAGE_PREFIX}: ${error.message}`
+            : `Model requires a subscription · Check your plan at the provider · ${API_ERROR_MESSAGE_PREFIX}: ${error.message}`,
+        })
+      }
+      const isModelAccessError =
+        error.status === 403 &&
+        (error.message.toLowerCase().includes('no_access') ||
+          error.message.toLowerCase().includes('no access to model') ||
+          error.message.toLowerCase().includes('access to model'))
+      if (isModelAccessError) {
+        return createAssistantAPIErrorMessage({
+          error: 'authentication_failed',
+          content: getIsNonInteractiveSession()
+            ? `Model access denied by provider. ${API_ERROR_MESSAGE_PREFIX}: ${error.message}`
+            : `Model access denied · Check your plan or model name at the provider · ${API_ERROR_MESSAGE_PREFIX}: ${error.message}`,
+        })
+      }
       return createAssistantAPIErrorMessage({
         error: 'authentication_failed',
         content: getIsNonInteractiveSession()

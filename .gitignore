@@ -41,3 +41,15 @@ temp_*.txt
 GEMINI.md
 /.claude
 package-lock.json
+
+# ── Workspace local do NeoCode (skills, rules, commands) ────────────
+.neo/
+
+# ── Python: dependências locais e cache ─────────────────────────────
+.pydeps/
+__pycache__/
+*.pyc
+
+# ── Artefatos do Windows ────────────────────────────────────────────
+nul
+Thumbs.db

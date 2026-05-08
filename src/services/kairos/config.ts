@@ -31,7 +31,7 @@ export function loadKairosConfig(cwd: string): KairosConfig {
   const candidates = [
     join(cwd, '.neocode', 'kairos.yaml'),
     join(cwd, '.neocode', 'kairos.yml'),
-    join(cwd, '.claude', 'kairos.yaml'),
+    join(cwd, '.neo', 'kairos.yaml'),
   ]
 
   for (const path of candidates) {

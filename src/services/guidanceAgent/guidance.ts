@@ -18,7 +18,7 @@ async function fileExists(path: string): Promise<boolean> {
 export async function resolveGuidancePath(cwd: string): Promise<string | null> {
   const candidates = [
     join(cwd, '.neocode', 'guidance.md'),
-    join(cwd, '.claude', 'guidance.md'),
+    join(cwd, '.neo', 'guidance.md'),
   ]
 
   for (const candidate of candidates) {

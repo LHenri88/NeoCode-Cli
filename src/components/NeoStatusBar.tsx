@@ -63,6 +63,12 @@ function detectProviderInfo(): { name: string; model: string; isLocal: boolean; 
     else if (/openrouter/i.test(baseUrl)) name = 'OpenRouter'
     else if (/groq/i.test(baseUrl)) name = 'Groq'
     else if (/mistral/i.test(baseUrl)) name = 'Mistral'
+    else if (/moonshot\.ai/i.test(baseUrl)) name = 'Moonshot AI'
+    else if (/together\.xyz/i.test(baseUrl)) name = 'Together AI'
+    else if (/nvidia\.com/i.test(baseUrl)) name = 'NVIDIA NIM'
+    else if (/ollama\.com/i.test(baseUrl)) name = 'Ollama Cloud'
+    else if (/models\.github\.ai/i.test(baseUrl)) name = 'GitHub Models'
+    else if (/azure\.com/i.test(baseUrl)) name = 'Azure OpenAI'
     else if (isLocal) name = getLocalOpenAICompatibleProviderLabel(baseUrl)
     return { name, model, isLocal, isAnthropic: false }
   }

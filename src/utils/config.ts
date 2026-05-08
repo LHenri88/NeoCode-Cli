@@ -1828,13 +1828,13 @@ export function getMemoryPath(memoryType: MemoryType): string {
 
   switch (memoryType) {
     case 'User':
-      return join(getClaudeConfigHomeDir(), 'CLAUDE.md')
+      return join(getClaudeConfigHomeDir(), 'NEO.md')
     case 'Local':
-      return join(cwd, 'CLAUDE.local.md')
+      return join(cwd, 'NEO.local.md')
     case 'Project':
-      return join(cwd, 'CLAUDE.md')
+      return join(cwd, 'NEO.md')
     case 'Managed':
-      return join(getManagedFilePath(), 'CLAUDE.md')
+      return join(getManagedFilePath(), 'NEO.md')
     case 'AutoMem':
       return getAutoMemEntrypoint()
   }
@@ -1845,13 +1845,18 @@ export function getMemoryPath(memoryType: MemoryType): string {
   return '' // unreachable in external builds where TeamMem is not in MemoryType
 }
 
-export function getManagedClaudeRulesDir(): string {
-  return join(getManagedFilePath(), '.claude', 'rules')
+export function getManagedNeoRulesDir(): string {
+  return join(getManagedFilePath(), '.neo', 'rules')
 }
 
-export function getUserClaudeRulesDir(): string {
+export function getUserNeoRulesDir(): string {
   return join(getClaudeConfigHomeDir(), 'rules')
 }
+
+/** @deprecated Use getManagedNeoRulesDir */
+export const getManagedClaudeRulesDir = getManagedNeoRulesDir
+/** @deprecated Use getUserNeoRulesDir */
+export const getUserClaudeRulesDir = getUserNeoRulesDir
 
 // Exported for testing only
 export const _getConfigForTesting = getConfig

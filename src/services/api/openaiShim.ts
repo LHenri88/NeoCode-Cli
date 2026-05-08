@@ -70,7 +70,7 @@ const GITHUB_429_BASE_DELAY_SEC = 1
 const GITHUB_429_MAX_DELAY_SEC = 32
 const GEMINI_API_HOST = 'generativelanguage.googleapis.com'
 
-// Retry settings for local proxy 429s (gqwen, LM Studio, etc.)
+// Retry settings for local proxy 429s (LM Studio, Ollama, etc.)
 // These are transient pool/concurrency limits — not real user quota exhaustion.
 const LOCAL_429_MAX_RETRIES = 3
 const LOCAL_429_BASE_DELAY_MS = 2000
@@ -994,11 +994,18 @@ class OpenAIShimMessages {
   private defaultHeaders: Record<string, string>
   private reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
   private providerOverride?: { model: string; baseURL: string; apiKey: string }
+  private fetchImpl: typeof globalThis.fetch
 
-  constructor(defaultHeaders: Record<string, string>, reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh', providerOverride?: { model: string; baseURL: string; apiKey: string }) {
+  constructor(
+    defaultHeaders: Record<string, string>,
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh',
+    providerOverride?: { model: string; baseURL: string; apiKey: string },
+    fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  ) {
     this.defaultHeaders = defaultHeaders
     this.reasoningEffort = reasoningEffort
     this.providerOverride = providerOverride
+    this.fetchImpl = fetchImpl
   }
 
   create(
@@ -1181,53 +1188,85 @@ class OpenAIShimMessages {
       params.system,
     )
 
+    // ── Detect provider-specific flags before body construction ──
+    const isOllamaLike = (() => {
+      try {
+        const url = new URL(request.baseUrl)
+        return url.port === '11434' || url.hostname.toLowerCase().includes('ollama')
+      } catch { return false }
+    })()
+
+    const isGithub = isGithubModelsMode()
+    const githubEndpointType = getGithubEndpointType(request.baseUrl)
+    const isGithubCopilot = isGithub && githubEndpointType === 'copilot'
+    const isGithubModels =
+      githubEndpointType === 'models' ||
+      (isGithub && (githubEndpointType === 'models' || githubEndpointType === 'custom'))
+
+    let isAzureEndpoint = false
+    try {
+      const { hostname } = new URL(request.baseUrl)
+      isAzureEndpoint = hostname.endsWith('.azure.com') &&
+        (hostname.includes('cognitiveservices') || hostname.includes('openai') || hostname.includes('services.ai'))
+    } catch { /* malformed URL — not Azure */ }
+
+    let isStandardOpenAI = false
+    try {
+      isStandardOpenAI = new URL(request.baseUrl).hostname === 'api.openai.com'
+    } catch { /* ignore */ }
+
+    // ── Build request body ──
     const body: Record<string, unknown> = {
       model: request.resolvedModel,
       messages: openaiMessages,
       stream: params.stream ?? false,
     }
-    // Convert max_tokens to max_completion_tokens for OpenAI API compatibility.
-    // Azure OpenAI requires max_completion_tokens and does not accept max_tokens.
-    // Ensure max_tokens is a valid positive number before using it.
-    const maxTokensValue = typeof params.max_tokens === 'number' && params.max_tokens > 0
-      ? params.max_tokens
-      : undefined
-    const maxCompletionTokensValue = typeof (params as Record<string, unknown>).max_completion_tokens === 'number'
-      ? (params as Record<string, unknown>).max_completion_tokens as number
-      : undefined
 
-    if (maxTokensValue !== undefined) {
-      body.max_completion_tokens = maxTokensValue
-    } else if (maxCompletionTokensValue !== undefined) {
-      body.max_completion_tokens = maxCompletionTokensValue
+    const tokenLimit = (typeof params.max_tokens === 'number' && params.max_tokens > 0)
+      ? params.max_tokens
+      : (typeof (params as Record<string, unknown>).max_completion_tokens === 'number')
+        ? (params as Record<string, unknown>).max_completion_tokens as number
+        : undefined
+
+    if (tokenLimit !== undefined) {
+      // Azure OpenAI requires max_completion_tokens (rejects max_tokens).
+      // Standard OpenAI API prefers max_completion_tokens for newer models.
+      // All other OpenAI-compatible providers (Groq, DeepSeek, Mistral, Together,
+      // NVIDIA, Moonshot, OpenRouter, etc.) use the universally supported max_tokens.
+      if (isAzureEndpoint || isStandardOpenAI) {
+        body.max_completion_tokens = tokenLimit
+      } else {
+        body.max_tokens = tokenLimit
+      }
     }
 
-    if (params.stream && !isLocalProviderUrl(request.baseUrl)) {
+    // For models with known small context windows, cap max_tokens to leave
+    // room for the system prompt + tools + conversation. Without this, models
+    // with 32k context fail immediately because system+tools alone use ~24k.
+    if (body.max_tokens !== undefined && !isStandardOpenAI && !isAzureEndpoint) {
+      const { getOpenAIContextWindow } = await import('../../utils/model/openaiContextWindows.js')
+      const knownCtx = getOpenAIContextWindow(request.resolvedModel)
+      if (knownCtx !== undefined && knownCtx <= 65_536) {
+        const maxSafeOutput = Math.max(Math.floor(knownCtx * 0.25), 1_024)
+        body.max_tokens = Math.min(body.max_tokens as number, maxSafeOutput)
+      }
+    }
+
+    // stream_options is only supported by OpenAI, Azure, and a few others.
+    // Many providers (Ollama Cloud, Mistral, Together, etc.) reject unknown fields.
+    // Only send it for providers known to support it.
+    if (params.stream && (isStandardOpenAI || isAzureEndpoint)) {
       body.stream_options = { include_usage: true }
     }
 
     // Ollama defaults to num_ctx=8192 even for models that support more.
-    // NeoCode's system prompt + tool definitions often exceeds 8k tokens,
-    // causing immediate "prompt is too long" errors. Inject the known context
-    // window for the model so Ollama allocates the correct KV-cache size.
-    // NOTE: only inject for Ollama — gqwen, LM Studio, and other OpenAI-compatible
-    // local proxies do not understand the Ollama-specific `options` field.
+    // NeoCode's system prompt + tool definitions often exceeds 8k tokens.
+    // Only inject for local Ollama — Ollama Cloud and others don't understand `options`.
     if (isOllamaUrl(request.baseUrl)) {
-      const { getOpenAIContextWindow } = await import('../../utils/model/openaiContextWindows.js')
-      const knownCtx = getOpenAIContextWindow(request.resolvedModel)
-      // Use known size, or a safe 32k minimum to avoid trivial overflows.
+      const { getOpenAIContextWindow: getCtx } = await import('../../utils/model/openaiContextWindows.js')
+      const knownCtx = getCtx(request.resolvedModel)
       const numCtx = Math.max(knownCtx ?? 32_768, 32_768)
       body.options = { num_ctx: numCtx }
-    }
-
-    const isGithub = isGithubModelsMode()
-    const githubEndpointType = getGithubEndpointType(request.baseUrl)
-    const isGithubCopilot = isGithub && githubEndpointType === 'copilot'
-    const isGithubModels = isGithub && (githubEndpointType === 'models' || githubEndpointType === 'custom')
-
-    if (isGithub && body.max_completion_tokens !== undefined) {
-      body.max_tokens = body.max_completion_tokens
-      delete body.max_completion_tokens
     }
 
     if (params.temperature !== undefined) body.temperature = params.temperature
@@ -1270,18 +1309,9 @@ class OpenAIShimMessages {
     const isGemini = isGeminiMode()
     const apiKey =
       this.providerOverride?.apiKey ?? process.env.OPENAI_API_KEY ?? ''
-    // Detect Azure endpoints by hostname (not raw URL) to prevent bypass via
-    // path segments like https://evil.com/cognitiveservices.azure.com/
-    let isAzure = false
-    try {
-      const { hostname } = new URL(request.baseUrl)
-      isAzure = hostname.endsWith('.azure.com') &&
-        (hostname.includes('cognitiveservices') || hostname.includes('openai') || hostname.includes('services.ai'))
-    } catch { /* malformed URL — not Azure */ }
 
     if (apiKey) {
-      if (isAzure) {
-        // Azure uses api-key header instead of Bearer token
+      if (isAzureEndpoint) {
         headers['api-key'] = apiKey
       } else {
         headers.Authorization = `Bearer ${apiKey}`
@@ -1309,7 +1339,7 @@ class OpenAIShimMessages {
     // Standard format: {base}/openai/deployments/{model}/chat/completions?api-version={version}
     // Non-Azure: {base}/chat/completions
     let chatCompletionsUrl: string
-    if (isAzure) {
+    if (isAzureEndpoint) {
       const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? '2024-12-01-preview'
       const deployment = request.resolvedModel ?? process.env.OPENAI_MODEL ?? 'gpt-4o'
       // If base URL already contains /deployments/, use it as-is with api-version
@@ -1332,7 +1362,7 @@ class OpenAIShimMessages {
       signal: options?.signal,
     }
 
-    const maxAttempts = isGithub
+    const maxAttempts = (isGithub || isGithubModels)
       ? GITHUB_429_MAX_RETRIES
       : isLocalProviderUrl(request.baseUrl)
         ? LOCAL_429_MAX_RETRIES
@@ -1340,7 +1370,7 @@ class OpenAIShimMessages {
     let response: Response | undefined
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        response = await fetch(chatCompletionsUrl, fetchInit)
+        response = await this.fetchImpl(chatCompletionsUrl, fetchInit)
       } catch (fetchError) {
         // Wrap network-level errors with actionable context (e.g. connection refused)
         const isLocal = isLocalProviderUrl(request.baseUrl)
@@ -1358,7 +1388,7 @@ class OpenAIShimMessages {
         return response
       }
       if (
-        isGithub &&
+        (isGithub || isGithubModels) &&
         response.status === 429 &&
         attempt < maxAttempts - 1
       ) {
@@ -1371,7 +1401,7 @@ class OpenAIShimMessages {
         continue
       }
 
-      // Local proxy (gqwen, LM Studio, etc.) 429 — transient pool/concurrency limit.
+      // Local proxy (LM Studio, Ollama, etc.) 429 — transient pool/concurrency limit.
       // Retry with exponential backoff before surfacing the error to the user.
       if (
         isLocalProviderUrl(request.baseUrl) &&
@@ -1404,11 +1434,11 @@ class OpenAIShimMessages {
       // be consumed a single time.
       const errorBody = await response.text().catch(() => 'unknown error')
       const rateHint =
-        isGithub && response.status === 429 ? formatRetryAfterHint(response) : ''
+        (isGithub || isGithubModels) && response.status === 429 ? formatRetryAfterHint(response) : ''
 
-      // If GitHub Copilot returns error about /chat/completions,
+      // If GitHub Copilot/Models returns error about /chat/completions,
       // try the /responses endpoint (needed for GPT-5+ models)
-      if (isGithub && response.status === 400) {
+      if ((isGithub || isGithubModels) && response.status === 400) {
         if (errorBody.includes('/chat/completions') || errorBody.includes('not accessible')) {
           const responsesUrl = `${request.baseUrl}/responses`
           const responsesBody: Record<string, unknown> = {
@@ -1455,7 +1485,7 @@ class OpenAIShimMessages {
             }
           }
 
-          const responsesResponse = await fetch(responsesUrl, {
+          const responsesResponse = await this.fetchImpl(responsesUrl, {
             method: 'POST',
             headers,
             body: JSON.stringify(responsesBody),
@@ -1479,7 +1509,7 @@ class OpenAIShimMessages {
       let errorResponse: object | undefined
       try { errorResponse = JSON.parse(errorBody) } catch { /* raw text */ }
 
-      // For local proxy providers (e.g. gqwen at localhost:3099, LM Studio, Ollama),
+      // For local proxy providers (e.g. LM Studio, Ollama),
       // throw plain Error (not APIError) so withRetry does not retry — these errors
       // should be surfaced to the user immediately rather than silently retried.
       if (isLocalProviderUrl(request.baseUrl)) {
@@ -1488,7 +1518,7 @@ class OpenAIShimMessages {
         if (response.status === 401) {
           throw new Error(
             `Authentication failed (${request.baseUrl}): ${errMsg}. ` +
-            `If using gqwen-auth, run: gqwen add — then retry.`,
+            `Verify the API key is correct and try again.`,
           )
         }
         if (response.status === 429) {
@@ -1518,6 +1548,46 @@ class OpenAIShimMessages {
         )
       }
 
+      if (response.status === 401 && !isLocalProviderUrl(request.baseUrl)) {
+        const errMsg = (errorResponse as { error?: { message?: string } } | undefined)
+          ?.error?.message ?? errorBody
+        throw new Error(
+          `Authentication failed for ${request.baseUrl}: ${errMsg}. ` +
+          `Verify OPENAI_API_KEY, OPENAI_BASE_URL, and the selected provider/model integration.`,
+        )
+      }
+
+      // 403 from external providers — classify into subscription / model-access / bad-key errors
+      if (response.status === 403 && !isLocalProviderUrl(request.baseUrl)) {
+        const lowerBody = errorBody.toLowerCase()
+        const errResp = errorResponse as { error?: { message?: string } | string } | undefined
+        const errMsg =
+          (typeof errResp?.error === 'object' ? errResp.error?.message : undefined) ??
+          (typeof errResp?.error === 'string' ? errResp.error : undefined) ??
+          errorBody
+        if (
+          lowerBody.includes('subscription') ||
+          lowerBody.includes('upgrade') ||
+          lowerBody.includes('requires a')
+        ) {
+          throw new Error(
+            `Model requires a subscription · Check your plan at the provider · API Error: ${errMsg}`,
+          )
+        }
+        if (
+          lowerBody.includes('no_access') ||
+          lowerBody.includes('no access to model') ||
+          lowerBody.includes('access to model')
+        ) {
+          throw new Error(
+            `Model access denied · Check your plan or model name at the provider · API Error: ${errMsg}`,
+          )
+        }
+        throw new Error(
+          `Invalid API key · Update via /provider · API Error: ${errMsg}`,
+        )
+      }
+
       // Produce actionable messages for common 400 errors
       if (response.status === 400) {
         const lowerBody = errorBody.toLowerCase()
@@ -1533,14 +1603,17 @@ class OpenAIShimMessages {
             `Try a different model or use /provider to reconfigure.`,
           )
         }
-        // Groq / Azure / external providers: 400 context window overflow.
+        // Groq / Azure / OpenRouter / external providers: 400 context window overflow.
         // Match specific codes and phrases only — avoid broad heuristics that
-        // accidentally fire on unrelated rate-limit messages (e.g. gqwen proxy).
+        // accidentally fire on unrelated rate-limit messages from local proxies.
         if (
           lowerBody.includes('context_length_exceeded') ||
           lowerBody.includes('request too large for model') ||
           lowerBody.includes('input is too long') ||
-          lowerBody.includes('context_window_overflow')
+          lowerBody.includes('context_window_overflow') ||
+          lowerBody.includes('maximum context length') ||
+          lowerBody.includes('reduce the length of') ||
+          lowerBody.includes('too many tokens')
         ) {
           const errMsg = (errorResponse as { error?: { message?: string } } | undefined)
             ?.error?.message ?? errorBody
@@ -1691,8 +1764,18 @@ class OpenAIShimBeta {
   messages: OpenAIShimMessages
   reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
 
-  constructor(defaultHeaders: Record<string, string>, reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh', providerOverride?: { model: string; baseURL: string; apiKey: string }) {
-    this.messages = new OpenAIShimMessages(defaultHeaders, reasoningEffort, providerOverride)
+  constructor(
+    defaultHeaders: Record<string, string>,
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh',
+    providerOverride?: { model: string; baseURL: string; apiKey: string },
+    fetchImpl?: typeof globalThis.fetch,
+  ) {
+    this.messages = new OpenAIShimMessages(
+      defaultHeaders,
+      reasoningEffort,
+      providerOverride,
+      fetchImpl,
+    )
     this.reasoningEffort = reasoningEffort
   }
 }
@@ -1703,6 +1786,7 @@ export function createOpenAIShimClient(options: {
   timeout?: number
   reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
   providerOverride?: { model: string; baseURL: string; apiKey: string }
+  fetch?: typeof globalThis.fetch
 }): unknown {
   hydrateGeminiAccessTokenFromSecureStorage()
   hydrateGithubModelsTokenFromSecureStorage()
@@ -1729,7 +1813,7 @@ export function createOpenAIShimClient(options: {
 
   const beta = new OpenAIShimBeta({
     ...(options.defaultHeaders ?? {}),
-  }, options.reasoningEffort, options.providerOverride)
+  }, options.reasoningEffort, options.providerOverride, options.fetch)
 
   return {
     beta,

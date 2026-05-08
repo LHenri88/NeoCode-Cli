@@ -47,8 +47,18 @@ const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   // MiniMax
   'MiniMax-M2.7':             204_800,
   'minimax-m2.7':             204_800,
+  'MiniMax-M2.5':              32_768,
+  'minimax-m2.5':              32_768,
+
+  // Together AI
+  'Qwen/Qwen3.5-9B':         131_072,
+  'Qwen/Qwen3-235B-A22B':    131_072,
+
+  // Moonshot AI
+  'kimi-k2.5':               131_072,
 
   // OpenRouter — top coding models (IDs without :free/:extended/:nitro suffix)
+  'minimax/minimax-m2.5':      32_768,
   'qwen/qwen3-coder':                   262_144,
   'qwen/qwen3-235b-a22b':              262_144,
   'qwen/qwen3-next-80b-a3b-instruct':  262_144,
@@ -154,8 +164,18 @@ const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
   // MiniMax
   'MiniMax-M2.7':            131_072,
   'minimax-m2.7':            131_072,
+  'MiniMax-M2.5':              4_096,
+  'minimax-m2.5':              4_096,
+
+  // Together AI
+  'Qwen/Qwen3.5-9B':          8_192,
+  'Qwen/Qwen3-235B-A22B':     8_192,
+
+  // Moonshot AI
+  'kimi-k2.5':                 8_192,
 
   // OpenRouter — top coding models
+  'minimax/minimax-m2.5':      4_096,
   'qwen/qwen3-coder':                    8_192,
   'qwen/qwen3-235b-a22b':               8_192,
   'qwen/qwen3-next-80b-a3b-instruct':   8_192,

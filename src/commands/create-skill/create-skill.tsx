@@ -23,9 +23,14 @@ function CreateSkillResult({
   onDone,
 }: CreateSkillResultProps): React.ReactNode {
   useEffect(() => {
-    const timer = setTimeout(() => onDone(), 0)
+    // Build success message
+    const successMessage = error
+      ? `Failed to create skill: ${error}`
+      : `✓ Created skill: .neo/skills/${skillName}/\n\nNext steps:\n  1. Edit .neo/skills/${skillName}/SKILL.md\n  2. Update description, when_to_use and implementation\n  3. Test with: /${skillName}`
+
+    const timer = setTimeout(() => onDone(successMessage, { display: 'system' }), 0)
     return () => clearTimeout(timer)
-  }, [onDone])
+  }, [onDone, skillName, error])
 
   return (
     <Box flexDirection="column" marginTop={1}>
@@ -50,7 +55,7 @@ function CreateSkillResult({
       {!error && (
         <Box flexDirection="column" marginTop={1} paddingLeft={1}>
           <Text dimColor>Next steps:</Text>
-          <Text dimColor>{`  1. Edit .claude/skills/${skillName}/SKILL.md`}</Text>
+          <Text dimColor>{`  1. Edit .neo/skills/${skillName}/SKILL.md`}</Text>
           <Text dimColor>{`  2. Update description, when_to_use and implementation`}</Text>
           <Text dimColor>{`  3. Test with: /${skillName}`}</Text>
         </Box>
@@ -59,16 +64,31 @@ function CreateSkillResult({
   )
 }
 
-function buildSkillContent(skillName: string): string {
+function buildSkillContent(
+  skillName: string,
+  description: string,
+  whenToUse: string,
+  arguments_: string[],
+  argumentHint: string,
+  implementation: string,
+): string {
   const title = skillName
     .split('-')
     .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
 
+  const argsList = arguments_.length > 0
+    ? arguments_.map((arg) => `  - ${arg}`).join('\n')
+    : '  - arg1'
+
+  const argsSection = arguments_.length > 0
+    ? arguments_.map((arg) => `- \`${arg}\`: Description of ${arg}`).join('\n')
+    : '- `arg1`: Description of first argument'
+
   return `---
 name: ${title}
-description: Brief description of what this skill does
-when_to_use: When to invoke this skill
+description: ${description}
+when_to_use: ${whenToUse}
 user-invocable: true
 version: 1.0.0
 allowed-tools:
@@ -77,56 +97,44 @@ allowed-tools:
   - Edit
   - Bash
 arguments:
-  - arg1
-argument-hint: <arg1>
+${argsList}
+argument-hint: ${argumentHint}
 ---
 
 # ${title}
 
 ## Purpose
 
-Explain what this skill does and why it exists.
+${description}
 
 ## Usage
 
 \`\`\`bash
-/${skillName} <arg1>
+/${skillName} ${argumentHint}
 \`\`\`
 
 ## Arguments
 
-- \`arg1\`: Description of first argument
+${argsSection}
 
 ## Implementation
 
-Provide the detailed instructions for the AI agent to follow when executing this skill.
-
-### Step 1: Gather Information
-
-Describe what information to collect first.
-
-### Step 2: Process Data
-
-Describe the main processing logic.
-
-### Step 3: Generate Output
-
-Describe what output to produce.
+${implementation}
 
 ## Examples
 
 \`\`\`bash
 # Example usage
-/${skillName} example-value
+/${skillName} ${argumentHint.replace(/[<>]/g, 'example')}
 \`\`\`
 
 ## Notes
 
-Any additional notes or considerations.
+Additional notes or considerations can be added here.
 `
 }
 
-function buildReadmeContent(skillName: string): string {
+function buildReadmeContent(skillName: string, description: string): string {
   const title = skillName
     .split('-')
     .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -134,11 +142,11 @@ function buildReadmeContent(skillName: string): string {
 
   return `# ${title}
 
-Brief description of the skill.
+${description}
 
 ## Installation
 
-This skill is automatically loaded from \`.claude/skills/${skillName}/\`
+This skill is automatically loaded from \`.neo/skills/${skillName}/\`
 
 ## Usage
 
@@ -152,18 +160,80 @@ See [SKILL.md](./SKILL.md) for full documentation.
 `
 }
 
+function createSkillFiles(
+  skillName: string,
+  description: string,
+  whenToUse: string,
+  arguments_: string[],
+  argumentHint: string,
+  implementation: string,
+): { steps: Step[]; error?: string } {
+  const skillDir = `.neo/skills/${skillName}`
+  const workingDir = getCwd()
+  const fullSkillDir = path.join(workingDir, skillDir)
+  const fullSkillMdPath = path.join(fullSkillDir, 'SKILL.md')
+  const fullReadmePath = path.join(fullSkillDir, 'README.md')
+
+  const steps: Step[] = []
+
+  if (fs.existsSync(fullSkillDir)) {
+    return {
+      steps,
+      error: `Skill directory already exists: ${skillDir}`,
+    }
+  }
+
+  try {
+    fs.mkdirSync(fullSkillDir, { recursive: true })
+    steps.push({ label: `Created directory: ${skillDir}/`, ok: true })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    steps.push({ label: `Failed to create directory: ${msg}`, ok: false })
+    return { steps, error: msg }
+  }
+
+  try {
+    const skillContent = buildSkillContent(
+      skillName,
+      description,
+      whenToUse,
+      arguments_,
+      argumentHint,
+      implementation,
+    )
+    fs.writeFileSync(fullSkillMdPath, skillContent, 'utf-8')
+    steps.push({ label: `Created ${skillDir}/SKILL.md`, ok: true })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    steps.push({ label: `Failed to create SKILL.md: ${msg}`, ok: false })
+    return { steps, error: msg }
+  }
+
+  try {
+    const readmeContent = buildReadmeContent(skillName, description)
+    fs.writeFileSync(fullReadmePath, readmeContent, 'utf-8')
+    steps.push({ label: `Created ${skillDir}/README.md`, ok: true })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    steps.push({ label: `Failed to create README.md: ${msg}`, ok: false })
+    return { steps, error: msg }
+  }
+
+  return { steps }
+}
+
 export async function call(
   onDone: LocalJSXCommandOnDone,
   _context: LocalJSXCommandContext,
   args: string,
 ): Promise<React.ReactNode> {
-  const skillName = args?.trim()
+  const parts = args?.trim().split('\n') || []
+  const skillName = parts[0]?.trim()
 
   if (!skillName) {
-    onDone(
-      'Usage: /create-skill <skill-name>\nExample: /create-skill my-awesome-skill',
-      { display: 'system' },
-    )
+    const message =
+      'Usage: /create-skill <skill-name>\nExample: /create-skill my-awesome-skill'
+    onDone(message, { display: 'system' })
     return null
   }
 
@@ -176,68 +246,76 @@ export async function call(
     return null
   }
 
-  const skillDir = `.claude/skills/${skillName}`
+  // Check if skill already exists
+  const skillDir = `.neo/skills/${skillName}`
   const workingDir = getCwd()
   const fullSkillDir = path.join(workingDir, skillDir)
-  const fullSkillMdPath = path.join(fullSkillDir, 'SKILL.md')
-  const fullReadmePath = path.join(fullSkillDir, 'README.md')
-
-  const steps: Step[] = []
 
   if (fs.existsSync(fullSkillDir)) {
     onDone(`Skill directory already exists: ${skillDir}`, { display: 'system' })
     return null
   }
 
-  try {
-    fs.mkdirSync(fullSkillDir, { recursive: true })
-    steps.push({ label: `Created directory: ${skillDir}/`, ok: true })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    steps.push({ label: `Failed to create directory: ${msg}`, ok: false })
-    return (
-      <CreateSkillResult
-        skillName={skillName}
-        steps={steps}
-        error={msg}
-        onDone={onDone}
-      />
-    )
+  // Check if structured details were provided
+  const hasStructuredDetails = args.includes('Description:') && args.includes('Implementation:')
+
+  if (!hasStructuredDetails) {
+    // No structured details - just acknowledge and let the model handle it
+    onDone(`Creating skill "${skillName}"...`, { display: 'system' })
+    return null
   }
 
-  try {
-    fs.writeFileSync(fullSkillMdPath, buildSkillContent(skillName), 'utf-8')
-    steps.push({ label: `Created ${skillDir}/SKILL.md`, ok: true })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    steps.push({ label: `Failed to create SKILL.md: ${msg}`, ok: false })
-    return (
-      <CreateSkillResult
-        skillName={skillName}
-        steps={steps}
-        error={msg}
-        onDone={onDone}
-      />
-    )
+  // Parse structured format
+  const text = args
+  const lines = text.split('\n')
+
+  let description = 'Brief description of what this skill does'
+  let whenToUse = 'When to invoke this skill'
+  let arguments_: string[] = []
+  let argumentHint = '<arg1>'
+  let implementation = 'Detailed step-by-step instructions for how to execute this skill.'
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+
+    if (line.toLowerCase().startsWith('description:')) {
+      description = line.substring('description:'.length).trim()
+    } else if (line.toLowerCase().startsWith('when to use:')) {
+      whenToUse = line.substring('when to use:'.length).trim()
+    } else if (line.toLowerCase().startsWith('arguments:')) {
+      const argsStr = line.substring('arguments:'.length).trim()
+      if (argsStr.toLowerCase() !== 'none') {
+        arguments_ = argsStr.split(',').map((a: string) => a.trim())
+      }
+    } else if (line.toLowerCase().startsWith('argument hint:')) {
+      argumentHint = line.substring('argument hint:'.length).trim()
+    } else if (line.toLowerCase().startsWith('implementation:')) {
+      // Collect all following lines as implementation
+      const implLines = []
+      for (let j = i + 1; j < lines.length; j++) {
+        implLines.push(lines[j])
+      }
+      implementation = implLines.join('\n').trim()
+      break
+    }
   }
 
-  try {
-    fs.writeFileSync(fullReadmePath, buildReadmeContent(skillName), 'utf-8')
-    steps.push({ label: `Created ${skillDir}/README.md`, ok: true })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    steps.push({ label: `Failed to create README.md: ${msg}`, ok: false })
-    return (
-      <CreateSkillResult
-        skillName={skillName}
-        steps={steps}
-        error={msg}
-        onDone={onDone}
-      />
-    )
-  }
+  // Create the skill files
+  const result = createSkillFiles(
+    skillName,
+    description,
+    whenToUse,
+    arguments_,
+    argumentHint,
+    implementation,
+  )
 
   return (
-    <CreateSkillResult skillName={skillName} steps={steps} onDone={onDone} />
+    <CreateSkillResult
+      skillName={skillName}
+      steps={result.steps}
+      error={result.error}
+      onDone={onDone}
+    />
   )
 }

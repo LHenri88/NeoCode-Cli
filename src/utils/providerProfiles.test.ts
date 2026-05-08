@@ -76,6 +76,17 @@ async function importFreshProviderProfileModules() {
     ) => {
       mockConfigState = updater(mockConfigState)
     },
+    // Stubs for functions imported by modules transitively loaded alongside
+    // this test file (e.g. auth.ts, analytics). Without these the mock
+    // replaces config.js with an incomplete module and Bun throws a
+    // SyntaxError for the missing named exports in parallel test runs.
+    getOrCreateUserID: () => 'test-user-id',
+    checkHasTrustDialogAccepted: () => false,
+    getCustomApiKeyStatus: () => ({ keyType: 'none' }),
+    getRemoteControlAtStartup: () => false,
+    isAutoUpdaterDisabled: () => false,
+    getPreferredLanguage: () => 'en',
+    recordFirstStartTime: () => undefined,
   }))
   const nonce = `${Date.now()}-${Math.random()}`
   const providers = await import(`./model/providers.js?ts=${nonce}`)
@@ -138,6 +149,50 @@ describe('applyProviderProfileToProcessEnv', () => {
     expect(process.env.CLAUDE_CODE_USE_GITHUB).toBeUndefined()
     expect(process.env.CLAUDE_CODE_USE_OPENAI).toBeUndefined()
     expect(getFreshAPIProvider()).toBe('firstParty')
+  })
+})
+
+describe('provider profile api key normalization', () => {
+  test('getProviderProfiles collapses duplicated saved api keys', async () => {
+    const { getProviderProfiles } = await importFreshProviderProfileModules()
+    const duplicatedKey = 'sk-test-secret-1234sk-test-secret-1234'
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [
+        buildProfile({
+          id: 'saved_openai',
+          apiKey: duplicatedKey,
+        }),
+      ],
+      activeProviderProfileId: 'saved_openai',
+    }))
+
+    const [profile] = getProviderProfiles()
+
+    expect(profile?.apiKey).toBe('sk-test-secret-1234')
+  })
+
+  test('applyActiveProviderProfileFromConfig uses normalized api key from saved profile', async () => {
+    const { applyActiveProviderProfileFromConfig } =
+      await importFreshProviderProfileModules()
+    const duplicatedKey = 'sk-test-secret-1234sk-test-secret-1234'
+
+    delete process.env.CLAUDE_CODE_USE_OPENAI
+    delete process.env.OPENAI_API_KEY
+
+    const applied = applyActiveProviderProfileFromConfig({
+      providerProfiles: [
+        buildProfile({
+          id: 'saved_openai',
+          apiKey: duplicatedKey,
+        }),
+      ],
+      activeProviderProfileId: 'saved_openai',
+    } as any)
+
+    expect(applied?.id).toBe('saved_openai')
+    expect(process.env.OPENAI_API_KEY).toBe('sk-test-secret-1234')
   })
 })
 

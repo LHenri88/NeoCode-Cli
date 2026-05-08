@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="vscode-extension/IDE/media/Screenshot_779.svg" alt="NeoCode" width="200">
+<img src="docs/neocode-icon.png" alt="NeoCode" width="200">
 
 ```
 ███╗   ██╗███████╗ ██████╗  ██████╗ ██████╗ ██████╗ ███████╗

@@ -41,9 +41,6 @@ import {
   isOllamaInstalled,
   hasLocalOllama,
   listOllamaModels,
-  isGqwenProxyRunning,
-  listGqwenModels,
-  GQWEN_PROXY_BASE_URL,
   DEFAULT_OLLAMA_BASE_URL,
 } from '../../utils/providerDiscovery.ts'
 
@@ -320,10 +317,16 @@ describe('_normalizeSchemaForOpenAI()', () => {
 // ─── B. Provider Config Preset Defaults ──────────────────────────────────────
 
 describe('getProviderPresetDefaults()', () => {
-  test('qwen preset uses port 3099 (gqwen-auth default)', () => {
-    const defaults = getProviderPresetDefaults('qwen')
-    expect(defaults.baseUrl).toContain('3099')
-    expect(defaults.baseUrl).not.toContain('8765')
+  test('nvidia preset points to integrate.api.nvidia.com', () => {
+    const defaults = getProviderPresetDefaults('nvidia')
+    expect(defaults.baseUrl).toContain('integrate.api.nvidia.com')
+    expect(defaults.requiresApiKey).toBe(true)
+  })
+
+  test('github-models preset points to models.github.ai', () => {
+    const defaults = getProviderPresetDefaults('github-models')
+    expect(defaults.baseUrl).toContain('models.github.ai')
+    expect(defaults.requiresApiKey).toBe(true)
   })
 
   test('groq preset points to api.groq.com', () => {
@@ -349,8 +352,12 @@ describe('getProviderPresetDefaults()', () => {
     expect(getProviderPresetDefaults('ollama').requiresApiKey).toBe(false)
   })
 
-  test('qwen preset requiresApiKey=false', () => {
-    expect(getProviderPresetDefaults('qwen').requiresApiKey).toBe(false)
+  test('lmstudio preset requiresApiKey=false', () => {
+    expect(getProviderPresetDefaults('lmstudio').requiresApiKey).toBe(false)
+  })
+
+  test('custom preset requiresApiKey=false', () => {
+    expect(getProviderPresetDefaults('custom').requiresApiKey).toBe(false)
   })
 })
 
@@ -389,7 +396,7 @@ describe('isOllamaUrl()', () => {
     ['http://localhost:11434/v1', true],
     ['http://localhost:11434', true],
     ['http://my-ollama-server:11434', true],
-    ['http://localhost:3099/v1', false],    // gqwen
+    ['http://localhost:3099/v1', false],    // custom local
     ['http://localhost:1234/v1', false],    // LM Studio
     ['https://api.groq.com/openai/v1', false],
   ])('%s → %s', (url, expected) => {
@@ -464,7 +471,228 @@ describe('resolveOllamaBin() cache behaviour', () => {
   })
 })
 
-// ─── D. Error Handling Paths (mocked fetch via createOpenAIShimClient) ────────
+// ─── D1. Request Format Validation per Provider (mocked fetch) ──────────────
+
+describe('Provider request format validation', () => {
+  let capturedUrl: string
+  let capturedHeaders: Record<string, string>
+  let capturedBody: Record<string, unknown>
+
+  beforeEach(() => {
+    saveEnvKeys(
+      'CLAUDE_CODE_USE_OPENAI', 'OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL',
+      'CLAUDE_CODE_USE_GITHUB', 'CLAUDE_CODE_USE_GEMINI',
+    )
+    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    capturedUrl = ''
+    capturedHeaders = {}
+    capturedBody = {}
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    restoreEnv()
+  })
+
+  function mockCaptureFetch(): void {
+    mockFetch((url, init) => {
+      capturedUrl = url
+      capturedHeaders = (init?.headers ?? {}) as Record<string, string>
+      capturedBody = JSON.parse(init?.body as string ?? '{}') as Record<string, unknown>
+      return jsonResponse({
+        id: 'chatcmpl-test',
+        choices: [{ message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop', index: 0 }],
+        model: 'test',
+        usage: { prompt_tokens: 5, completion_tokens: 1, total_tokens: 6 },
+      })
+    })
+  }
+
+  async function sendRequest(baseUrl: string, model: string, apiKey: string): Promise<void> {
+    process.env.OPENAI_BASE_URL = baseUrl
+    process.env.OPENAI_API_KEY = apiKey
+    process.env.OPENAI_MODEL = model
+    mockCaptureFetch()
+    const client = createOpenAIShimClient({}) as {
+      beta: { messages: { create: (p: Record<string, unknown>) => Promise<unknown> } }
+    }
+    await client.beta.messages.create({
+      model,
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'Say OK' }],
+      stream: false,
+    })
+  }
+
+  test('Groq: correct URL, Bearer auth, max_tokens (not max_completion_tokens)', async () => {
+    await sendRequest('https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile', 'gsk_test')
+    expect(capturedUrl).toBe('https://api.groq.com/openai/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer gsk_test')
+    expect(capturedBody.model).toBe('llama-3.3-70b-versatile')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+    expect(capturedBody.stream_options).toBeUndefined()
+    expect(capturedBody.options).toBeUndefined()
+  })
+
+  test('DeepSeek: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://api.deepseek.com/v1', 'deepseek-chat', 'sk-test')
+    expect(capturedUrl).toBe('https://api.deepseek.com/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer sk-test')
+    expect(capturedBody.model).toBe('deepseek-chat')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+    expect(capturedBody.options).toBeUndefined()
+  })
+
+  test('Mistral: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://api.mistral.ai/v1', 'mistral-large-latest', 'test-key')
+    expect(capturedUrl).toBe('https://api.mistral.ai/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('mistral-large-latest')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('Together AI: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://api.together.xyz/v1', 'Qwen/Qwen3.5-9B', 'test-key')
+    expect(capturedUrl).toBe('https://api.together.xyz/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('Qwen/Qwen3.5-9B')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('Moonshot AI: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://api.moonshot.ai/v1', 'kimi-k2.5', 'test-key')
+    expect(capturedUrl).toBe('https://api.moonshot.ai/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('kimi-k2.5')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('OpenRouter: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://openrouter.ai/api/v1', 'openai/gpt-5-mini', 'test-key')
+    expect(capturedUrl).toBe('https://openrouter.ai/api/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('openai/gpt-5-mini')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('NVIDIA NIM: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://integrate.api.nvidia.com/v1', 'meta/llama-3.3-70b-instruct', 'nvapi-test')
+    expect(capturedUrl).toBe('https://integrate.api.nvidia.com/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer nvapi-test')
+    expect(capturedBody.model).toBe('meta/llama-3.3-70b-instruct')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('GitHub Models: correct URL, GitHub headers, max_tokens', async () => {
+    await sendRequest('https://models.github.ai/inference', 'meta/Meta-Llama-3.3-70B-Instruct', 'ghp_test')
+    expect(capturedUrl).toBe('https://models.github.ai/inference/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer ghp_test')
+    expect(capturedHeaders['Accept']).toBe('application/vnd.github+json')
+    expect(capturedHeaders['X-GitHub-Api-Version']).toBe('2022-11-28')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('Ollama Cloud: correct URL, Bearer auth, max_tokens, no stream_options/options', async () => {
+    await sendRequest('https://ollama.com/v1', 'llama3.2:3b', 'test-key')
+    expect(capturedUrl).toBe('https://ollama.com/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('llama3.2:3b')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+    expect(capturedBody.stream_options).toBeUndefined()
+    expect(capturedBody.options).toBeUndefined()
+  })
+
+  test('Gemini: correct URL, Bearer auth, max_tokens', async () => {
+    await sendRequest('https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash-preview', 'test-key')
+    expect(capturedUrl).toBe('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer test-key')
+    expect(capturedBody.model).toBe('gemini-3-flash-preview')
+    expect(capturedBody.max_tokens).toBe(100)
+    expect(capturedBody.max_completion_tokens).toBeUndefined()
+  })
+
+  test('Standard OpenAI: uses max_completion_tokens and stream_options', async () => {
+    process.env.OPENAI_BASE_URL = 'https://api.openai.com/v1'
+    process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.OPENAI_MODEL = 'gpt-4o'
+    mockCaptureFetch()
+    const client = createOpenAIShimClient({}) as {
+      beta: { messages: { create: (p: Record<string, unknown>) => Promise<unknown> } }
+    }
+    await client.beta.messages.create({
+      model: 'gpt-4o',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'Say OK' }],
+      stream: false,
+    })
+    expect(capturedUrl).toBe('https://api.openai.com/v1/chat/completions')
+    expect(capturedHeaders.Authorization).toBe('Bearer sk-test')
+    expect(capturedBody.max_completion_tokens).toBe(100)
+    expect(capturedBody.max_tokens).toBeUndefined()
+  })
+
+  test('No stream_options sent to third-party providers', async () => {
+    const providers = [
+      ['https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile'],
+      ['https://api.deepseek.com/v1', 'deepseek-chat'],
+      ['https://api.mistral.ai/v1', 'mistral-large-latest'],
+      ['https://api.together.xyz/v1', 'Qwen/Qwen3.5-9B'],
+      ['https://ollama.com/v1', 'llama3.2:3b'],
+    ] as const
+
+    for (const [baseUrl, model] of providers) {
+      process.env.OPENAI_BASE_URL = baseUrl
+      process.env.OPENAI_API_KEY = 'test-key'
+      process.env.OPENAI_MODEL = model
+      mockCaptureFetch()
+      const client = createOpenAIShimClient({}) as {
+        beta: { messages: { create: (p: Record<string, unknown>) => Promise<unknown> } }
+      }
+      await client.beta.messages.create({
+        model,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'hi' }],
+        stream: true,
+      })
+      expect(capturedBody.stream_options).toBeUndefined()
+    }
+  })
+
+  test('No options.num_ctx sent to cloud providers', async () => {
+    const cloudUrls = [
+      'https://api.groq.com/openai/v1',
+      'https://ollama.com/v1',
+      'https://api.deepseek.com/v1',
+    ]
+    for (const baseUrl of cloudUrls) {
+      await sendRequest(baseUrl, 'test-model', 'test-key')
+      expect(capturedBody.options).toBeUndefined()
+    }
+  })
+
+  test('max_tokens is capped for models with small context windows (≤64k)', async () => {
+    // minimax-m2.5 has 32k context → max safe output = floor(32768 * 0.25) = 8192
+    await sendRequest('https://openrouter.ai/api/v1', 'minimax/minimax-m2.5', 'test-key')
+    expect(capturedBody.max_tokens).toBeLessThanOrEqual(8_192)
+    expect((capturedBody.max_tokens as number)).toBeGreaterThan(0)
+  })
+
+  test('max_tokens is NOT capped for models with large context windows (>64k)', async () => {
+    await sendRequest('https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile', 'test-key')
+    expect(capturedBody.max_tokens).toBe(100)
+  })
+})
+
+// ─── D2. Error Handling Paths (mocked fetch via createOpenAIShimClient) ──────
 
 describe('HTTP error handling', () => {
   beforeEach(() => {
@@ -525,6 +753,25 @@ describe('HTTP error handling', () => {
     await expect(callShim('https://api.groq.com/openai/v1')).rejects.toThrow(/context length exceeded/i)
   })
 
+  test('400 with "maximum context length" (OpenRouter/MiniMax format) throws context error', async () => {
+    mockFetch(() =>
+      jsonResponse({
+        error: {
+          message: "Provider returned error",
+          code: 400,
+          metadata: {
+            raw: JSON.stringify({
+              error: {
+                message: "This model's maximum context length is 32768 tokens. However, you requested 8192 output tokens and your prompt contains at least 24577 input tokens, for a total of at least 32769 tokens. Please reduce the length of the input prompt or the number of requested output tokens.",
+              },
+            }),
+          },
+        },
+      }, 400),
+    )
+    await expect(callShim('https://openrouter.ai/api/v1')).rejects.toThrow(/context length exceeded/i)
+  })
+
   test('400 rate-limit-like message does NOT trigger context error', async () => {
     // A message that only says "rate limited" — must NOT match context error
     mockFetch(() =>
@@ -570,11 +817,11 @@ describe('HTTP error handling', () => {
     expect(String((thrownError as Error).message).toLowerCase()).not.toContain('context length exceeded')
   }, 20_000)
 
-  test('local 401 throws authentication error with gqwen hint', async () => {
+  test('local 401 throws authentication error', async () => {
     mockFetch(() =>
       jsonResponse({ error: { message: 'Unauthorized' } }, 401),
     )
-    await expect(callShim('http://localhost:3099/v1')).rejects.toThrow(/gqwen add/i)
+    await expect(callShim('http://localhost:3099/v1')).rejects.toThrow(/authentication failed/i)
   })
 
   test('400 "not a valid model" throws model-suggestion error', async () => {
@@ -592,6 +839,43 @@ describe('HTTP error handling', () => {
   test('network error to remote provider suggests checking connection', async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error('ENOTFOUND'))) as unknown as typeof globalThis.fetch
     await expect(callShim('https://api.groq.com/openai/v1')).rejects.toThrow(/check your internet|cannot connect/i)
+  })
+
+  test('403 with no_access code shows model access denied (not invalid api key)', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        { error: { code: 'no_access', message: 'No access to model: /DeepSeek-V3-0324' } },
+        403,
+      ),
+    )
+    await expect(callShim('https://models.github.ai/inference')).rejects.toThrow(/model access denied/i)
+  })
+
+  test('403 with "no access to model" message shows model access denied', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        { error: { message: 'No access to model. Please check your account.' } },
+        403,
+      ),
+    )
+    await expect(callShim('https://api.openai.com/v1')).rejects.toThrow(/model access denied/i)
+  })
+
+  test('403 Ollama Cloud subscription error shows subscription message', async () => {
+    mockFetch(() =>
+      jsonResponse(
+        { error: 'this model requires a subscription, upgrade for access: https://ollama.com/upgrade' },
+        403,
+      ),
+    )
+    await expect(callShim('https://ollama.com/v1')).rejects.toThrow(/subscription/i)
+  })
+
+  test('403 generic remote provider shows invalid api key', async () => {
+    mockFetch(() =>
+      jsonResponse({ error: { message: 'Forbidden' } }, 403),
+    )
+    await expect(callShim('https://api.groq.com/openai/v1')).rejects.toThrow(/invalid api key/i)
   })
 })
 
@@ -645,33 +929,6 @@ describe('listOllamaModels() — mocked', () => {
   })
 })
 
-describe('listGqwenModels() — mocked', () => {
-  afterEach(() => {
-    globalThis.fetch = originalFetch
-  })
-
-  test('returns model list from gqwen /v1/models endpoint', async () => {
-    mockFetch((url) => {
-      expect(url).toContain('localhost:3099')
-      return jsonResponse({
-        data: [
-          { id: 'qwen3-coder-plus' },
-          { id: 'qwen3-235b-a22b' },
-        ],
-      })
-    })
-    const result = await listGqwenModels()
-    expect(result.models.length).toBeGreaterThanOrEqual(2)
-    expect(result.models.some(m => m.value === 'qwen3-coder-plus')).toBe(true)
-  })
-
-  test('returns empty models on proxy error', async () => {
-    mockFetch(() => new Response('not found', { status: 404 }))
-    const result = await listGqwenModels()
-    expect(result.models).toEqual([])
-  })
-})
-
 // ─── D. Connectivity Tests (real HTTP, guarded) ───────────────────────────────
 
 describe('hasLocalOllama() — real HTTP', () => {
@@ -679,13 +936,6 @@ describe('hasLocalOllama() — real HTTP', () => {
     const result = await hasLocalOllama()
     expect(typeof result).toBe('boolean')
     // We can't assert true/false — just verify no exception
-  }, 3000)
-})
-
-describe('isGqwenProxyRunning() — real HTTP', () => {
-  test('returns boolean (true if gqwen proxy at localhost:3099)', async () => {
-    const result = await isGqwenProxyRunning()
-    expect(typeof result).toBe('boolean')
   }, 3000)
 })
 
@@ -735,22 +985,19 @@ describe('groq round-trip query', () => {
   }, 30_000)
 })
 
-describe('gqwen round-trip query', () => {
-  test('send "Say OK" to gqwen proxy, receive non-empty text response', async () => {
-    const proxyRunning = await isGqwenProxyRunning()
-    if (!proxyRunning) {
-      console.log('[SKIP] gqwen proxy not running at localhost:3099')
-      return
-    }
-    if (process.env.GQWEN_SKIP_TEST) {
-      console.log('[SKIP] GQWEN_SKIP_TEST is set')
+describe('NVIDIA NIM round-trip query', () => {
+  test('send "Say OK" to NVIDIA NIM, receive non-empty text response', async () => {
+    const apiKey = process.env.NVIDIA_API_KEY
+    if (!apiKey) {
+      console.log('[SKIP] NVIDIA_API_KEY not set')
       return
     }
 
+    const defaults = getProviderPresetDefaults('nvidia')
     process.env.CLAUDE_CODE_USE_OPENAI = '1'
-    process.env.OPENAI_BASE_URL = `${GQWEN_PROXY_BASE_URL}/v1`
-    process.env.OPENAI_MODEL = 'qwen3-coder-plus'
-    delete process.env.OPENAI_API_KEY
+    process.env.OPENAI_BASE_URL = defaults.baseUrl
+    process.env.OPENAI_API_KEY = apiKey
+    process.env.OPENAI_MODEL = defaults.model
 
     try {
       const client = createOpenAIShimClient({}) as {
@@ -759,39 +1006,69 @@ describe('gqwen round-trip query', () => {
         }> } }
       }
 
-      let response: { content: Array<{ type: string; text?: string }> }
-      try {
-        response = await client.beta.messages.create({
-          model: 'qwen3-coder-plus',
-          max_tokens: 50,
-          messages: [{ role: 'user', content: 'Say just the word OK.' }],
-          stream: false,
-        }) as typeof response
-      } catch (e) {
-        const msg = String((e as Error).message ?? e)
-        if (msg.includes('401') || msg.includes('Authentication failed') || msg.includes('token expired') || msg.includes('invalid access token')) {
-          console.log(`[SKIP] gqwen auth expired — run: gqwen add to refresh. (${msg.slice(0, 80)})`)
-          return
-        }
-        if (msg.includes('rate limited') || msg.includes('Rate limited')) {
-          console.log(`[SKIP] gqwen rate limited — try again later. (${msg.slice(0, 80)})`)
-          return
-        }
-        throw e
-      }
+      const response = await client.beta.messages.create({
+        model: defaults.model,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Say just the word OK and nothing else.' }],
+        stream: false,
+      })
 
-      const text = response.content
+      const text = (response as { content: Array<{ type: string; text?: string }> }).content
         .filter(b => b.type === 'text')
         .map(b => b.text ?? '')
         .join('')
       expect(text.trim().length).toBeGreaterThan(0)
-      console.log(`[gqwen] response: "${text.trim().slice(0, 100)}"`)
+      console.log(`[nvidia] response: "${text.trim().slice(0, 100)}"`)
     } finally {
       delete process.env.CLAUDE_CODE_USE_OPENAI
       delete process.env.OPENAI_BASE_URL
+      delete process.env.OPENAI_API_KEY
       delete process.env.OPENAI_MODEL
     }
-  }, 60_000) // generous timeout — gqwen may be slow or rate-limited
+  }, 30_000)
+})
+
+describe('GitHub Models round-trip query', () => {
+  test('send "Say OK" to GitHub Models, receive non-empty text response', async () => {
+    const apiKey = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
+    if (!apiKey) {
+      console.log('[SKIP] GITHUB_TOKEN / GH_TOKEN not set')
+      return
+    }
+
+    const defaults = getProviderPresetDefaults('github-models')
+    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.OPENAI_BASE_URL = defaults.baseUrl
+    process.env.OPENAI_API_KEY = apiKey
+    process.env.OPENAI_MODEL = defaults.model
+
+    try {
+      const client = createOpenAIShimClient({}) as {
+        beta: { messages: { create: (p: Record<string, unknown>) => Promise<{
+          content: Array<{ type: string; text?: string }>
+        }> } }
+      }
+
+      const response = await client.beta.messages.create({
+        model: defaults.model,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Say just the word OK and nothing else.' }],
+        stream: false,
+      })
+
+      const text = (response as { content: Array<{ type: string; text?: string }> }).content
+        .filter(b => b.type === 'text')
+        .map(b => b.text ?? '')
+        .join('')
+      expect(text.trim().length).toBeGreaterThan(0)
+      console.log(`[github-models] response: "${text.trim().slice(0, 100)}"`)
+    } finally {
+      delete process.env.CLAUDE_CODE_USE_OPENAI
+      delete process.env.OPENAI_BASE_URL
+      delete process.env.OPENAI_API_KEY
+      delete process.env.OPENAI_MODEL
+    }
+  }, 30_000)
 })
 
 describe('ollama round-trip query', () => {
@@ -841,4 +1118,104 @@ describe('ollama round-trip query', () => {
       delete process.env.OPENAI_MODEL
     }
   }, 60_000)
+})
+
+// ─── G. Additional Cloud Provider Round-trip Tests ───────────────────────────
+
+function makeRoundTripTest(
+  label: string,
+  preset: Parameters<typeof getProviderPresetDefaults>[0],
+  apiKeyEnv: string,
+): void {
+  describe(`${label} round-trip query`, () => {
+    test(`send "Say OK" to ${label}, receive non-empty text response`, async () => {
+      const apiKey = process.env[apiKeyEnv]
+      if (!apiKey) {
+        console.log(`[SKIP] ${apiKeyEnv} not set`)
+        return
+      }
+
+      const defaults = getProviderPresetDefaults(preset)
+      process.env.CLAUDE_CODE_USE_OPENAI = '1'
+      process.env.OPENAI_BASE_URL = defaults.baseUrl
+      process.env.OPENAI_API_KEY = apiKey
+      process.env.OPENAI_MODEL = defaults.model
+
+      try {
+        const client = createOpenAIShimClient({}) as {
+          beta: { messages: { create: (p: Record<string, unknown>) => Promise<{
+            content: Array<{ type: string; text?: string }>
+          }> } }
+        }
+
+        const response = await client.beta.messages.create({
+          model: defaults.model,
+          max_tokens: 50,
+          messages: [{ role: 'user', content: 'Say just the word OK and nothing else.' }],
+          stream: false,
+        })
+
+        const text = (response as { content: Array<{ type: string; text?: string }> }).content
+          .filter(b => b.type === 'text')
+          .map(b => b.text ?? '')
+          .join('')
+        expect(text.trim().length).toBeGreaterThan(0)
+        console.log(`[${label.toLowerCase()}] response: "${text.trim().slice(0, 100)}"`)
+      } finally {
+        delete process.env.CLAUDE_CODE_USE_OPENAI
+        delete process.env.OPENAI_BASE_URL
+        delete process.env.OPENAI_API_KEY
+        delete process.env.OPENAI_MODEL
+      }
+    }, 30_000)
+  })
+}
+
+makeRoundTripTest('DeepSeek', 'deepseek', 'DEEPSEEK_API_KEY')
+makeRoundTripTest('Mistral', 'mistral', 'MISTRAL_API_KEY')
+makeRoundTripTest('Together AI', 'together', 'TOGETHER_API_KEY')
+makeRoundTripTest('Moonshot AI', 'moonshotai', 'MOONSHOT_API_KEY')
+makeRoundTripTest('OpenRouter', 'openrouter', 'OPENROUTER_API_KEY')
+makeRoundTripTest('Gemini', 'gemini', 'GEMINI_API_KEY')
+
+describe('Ollama Cloud round-trip query', () => {
+  test('send "Say OK" to Ollama Cloud, receive non-empty text response', async () => {
+    const apiKey = process.env.OLLAMA_API_KEY
+    if (!apiKey) {
+      console.log('[SKIP] OLLAMA_API_KEY not set')
+      return
+    }
+
+    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.OPENAI_BASE_URL = 'https://ollama.com/v1'
+    process.env.OPENAI_API_KEY = apiKey
+    process.env.OPENAI_MODEL = process.env.OLLAMA_CLOUD_MODEL ?? 'llama3.2:3b'
+
+    try {
+      const client = createOpenAIShimClient({}) as {
+        beta: { messages: { create: (p: Record<string, unknown>) => Promise<{
+          content: Array<{ type: string; text?: string }>
+        }> } }
+      }
+
+      const response = await client.beta.messages.create({
+        model: process.env.OPENAI_MODEL,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Say just the word OK and nothing else.' }],
+        stream: false,
+      })
+
+      const text = (response as { content: Array<{ type: string; text?: string }> }).content
+        .filter(b => b.type === 'text')
+        .map(b => b.text ?? '')
+        .join('')
+      expect(text.trim().length).toBeGreaterThan(0)
+      console.log(`[ollama-cloud] response: "${text.trim().slice(0, 100)}"`)
+    } finally {
+      delete process.env.CLAUDE_CODE_USE_OPENAI
+      delete process.env.OPENAI_BASE_URL
+      delete process.env.OPENAI_API_KEY
+      delete process.env.OPENAI_MODEL
+    }
+  }, 30_000)
 })

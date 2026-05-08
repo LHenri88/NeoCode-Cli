@@ -860,148 +860,64 @@ export async function fetchModelsForPreset(
       }
     }
 
+    case 'nvidia': {
+      // NVIDIA NIM — OpenAI-compatible endpoint; filter to chat/completions models
+      const { models, error } = await fetchOpenAICompatibleModels(
+        'https://integrate.api.nvidia.com/v1',
+        apiKey,
+        id => !id.includes('embed') && !id.includes('rerank') && !id.includes('vlm'),
+        8000,
+      )
+      if (error) return { models, error }
+      // Surface free-tier models first (no billing required)
+      const FREE_PREFIXES = ['meta/', 'mistralai/', 'microsoft/', 'google/', 'deepseek-ai/', 'databricks/']
+      const ranked = models.sort((a, b) => {
+        const af = FREE_PREFIXES.some(p => a.value.startsWith(p)) ? 0 : 1
+        const bf = FREE_PREFIXES.some(p => b.value.startsWith(p)) ? 0 : 1
+        return af - bf || a.value.localeCompare(b.value)
+      })
+      return { models: ranked }
+    }
+
+    case 'github-models': {
+      // GitHub Models inference API — OpenAI-compatible
+      const { signal, clear } = withTimeoutSignal(8000)
+      try {
+        const res = await fetch('https://models.github.ai/catalog/models', {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          signal,
+        })
+        if (!res.ok) return { models: [], error: `GitHub API error ${res.status}` }
+        const data = (await res.json()) as Array<{
+          id?: string
+          name?: string
+          display_name?: string
+          publisher?: string
+          task?: string
+          friendly_name?: string
+        }>
+        const models = (Array.isArray(data) ? data : [])
+          .filter(m => !m.task || m.task === 'chat-completion' || m.task === 'text-generation')
+          .map(m => ({
+            value: m.name ?? m.id ?? '',
+            description: m.friendly_name ?? m.display_name ?? m.name ?? '',
+          }))
+          .filter(m => m.value)
+        return { models }
+      } catch (e) {
+        return { models: [], error: e instanceof Error ? e.message : 'Network error' }
+      } finally {
+        clear()
+      }
+    }
+
     default:
       return { models: [], error: 'No API model listing for this provider' }
   }
-}
-
-// ─── gqwen-auth (Qwen proxy) ──────────────────────────────────────────────────
-// Proxy runs at http://localhost:3099/v1 (OpenAI-compatible)
-// Install: bun install -g gqwen-auth
-// Auth:    gqwen add         (opens browser for Qwen OAuth)
-// Start:   gqwen serve on    (background daemon)
-// Models:  gqwen models
-
-export const GQWEN_PROXY_BASE_URL = 'http://localhost:3099'
-export const GQWEN_DEFAULT_MODEL = 'qwen3-coder-plus'
-
-/**
- * Resolve the gqwen binary path. Tries, in order:
- *  1. Global PATH (gqwen / gqwen.exe)
- *  2. ~/.bun/bin/gqwen (bun global install)
- *  3. node_modules/.bin/gqwen (project dependency)
- *  4. node_modules/gqwen-auth/dist/gqwen (direct)
- */
-function getGqwenBin(): string {
-  const home = process.env.HOME ?? process.env.USERPROFILE ?? ''
-  const candidates = [
-    'gqwen',
-    `${home}/.bun/bin/gqwen`,
-    './node_modules/.bin/gqwen',
-    './node_modules/gqwen-auth/dist/gqwen',
-  ]
-  // Return the first string that the OS can resolve; we can't test synchronously
-  // so we return them in priority order — callers use shell:true for PATH resolution
-  return candidates[0]!
-}
-
-/** Check whether the gqwen CLI is available. */
-export async function isGqwenInstalled(): Promise<boolean> {
-  const candidates = [
-    'gqwen',
-    `${process.env.HOME ?? process.env.USERPROFILE ?? ''}/.bun/bin/gqwen`,
-    './node_modules/.bin/gqwen',
-    './node_modules/gqwen-auth/dist/gqwen',
-  ]
-  for (const bin of candidates) {
-    try {
-      await execFileAsync(bin, ['--version'], { timeout: 3000, shell: process.platform === 'win32' })
-      return true
-    } catch {
-      // try next
-    }
-  }
-  return false
-}
-
-/**
- * Install gqwen-auth globally using Bun.
- * Returns { success, error }.
- */
-export function installGqwenAuth(): Promise<{ success: boolean; error?: string }> {
-  return new Promise(resolve => {
-    const child = spawn('bun', ['install', '--global', 'gqwen-auth'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-    })
-    let stderr = ''
-    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
-    child.on('close', code => resolve({ success: code === 0, error: code !== 0 ? stderr.trim() : undefined }))
-    child.on('error', err => resolve({ success: false, error: err.message }))
-  })
-}
-
-/**
- * Run `gqwen add` to authenticate via browser OAuth.
- * Captures stdout/stderr — gqwen add opens browser automatically and exits when done.
- * Returns { success, output } so the caller can display relevant messages.
- */
-export function runGqwenAdd(): Promise<{ success: boolean; output: string }> {
-  return new Promise(resolve => {
-    const bin = getGqwenBin()
-    const child = spawn(bin, ['add'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-    })
-    let output = ''
-    child.stdout?.on('data', (d: Buffer) => { output += d.toString() })
-    child.stderr?.on('data', (d: Buffer) => { output += d.toString() })
-    child.on('close', code => resolve({ success: code === 0, output: output.trim() }))
-    child.on('error', err => resolve({ success: false, output: err.message }))
-  })
-}
-
-/**
- * Check whether any Qwen accounts are configured in gqwen.
- * Returns true if at least one account exists.
- */
-export function hasGqwenAccounts(): Promise<boolean> {
-  return new Promise(resolve => {
-    const bin = getGqwenBin()
-    const child = spawn(bin, ['list'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-    })
-    let output = ''
-    child.stdout?.on('data', (d: Buffer) => { output += d.toString() })
-    child.on('close', () => {
-      // If output contains an email-like string or account info, accounts exist
-      resolve(output.trim().length > 0 && !output.includes('No accounts'))
-    })
-    child.on('error', () => resolve(false))
-  })
-}
-
-/** Check whether the gqwen proxy is currently running. */
-export async function isGqwenProxyRunning(): Promise<boolean> {
-  const { signal, clear } = withTimeoutSignal(2000)
-  try {
-    const res = await fetch(`${GQWEN_PROXY_BASE_URL}/v1/models`, { signal })
-    return res.ok
-  } catch {
-    return false
-  } finally {
-    clear()
-  }
-}
-
-/** Start the gqwen proxy in the background (fire-and-forget). */
-export function startGqwenServeBackground(): void {
-  const bin = getGqwenBin()
-  try {
-    spawn(bin, ['serve', 'on'], {
-      detached: true,
-      stdio: 'ignore',
-      shell: process.platform === 'win32',
-    }).unref()
-  } catch {
-    // ignore — already running or binary missing
-  }
-}
-
-/** List models available from the running gqwen proxy. */
-export async function listGqwenModels(): Promise<FetchModelsResult> {
-  return fetchOpenAICompatibleModels(`${GQWEN_PROXY_BASE_URL}/v1`, '', () => true, 5000)
 }
 
 // ─── Ollama suggested models to pull ─────────────────────────────────────────

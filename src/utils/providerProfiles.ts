@@ -20,7 +20,8 @@ export type ProviderPreset =
   | 'azure-openai'
   | 'openrouter'
   | 'lmstudio'
-  | 'qwen'
+  | 'nvidia'
+  | 'github-models'
   | 'custom'
 
 export type ProviderProfileInput = {
@@ -50,6 +51,28 @@ function trimOrUndefined(value: string | undefined): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
+function normalizeApiKey(value: string | undefined): string | undefined {
+  let normalized = trimOrUndefined(value)
+  if (!normalized) {
+    return undefined
+  }
+
+  // Some TUI paste flows can submit the same secret twice in one field.
+  // Collapse exact repeated halves so persisted provider profiles keep the
+  // intended credential instead of an invalid concatenation that 401s.
+  while (normalized.length >= 16 && normalized.length % 2 === 0) {
+    const half = normalized.length / 2
+    const left = normalized.slice(0, half)
+    const right = normalized.slice(half)
+    if (left !== right) {
+      break
+    }
+    normalized = left
+  }
+
+  return normalized
+}
+
 function normalizeBaseUrl(value: string): string {
   return trimValue(value).replace(/\/+$/, '')
 }
@@ -71,7 +94,7 @@ function sanitizeProfile(profile: ProviderProfile): ProviderProfile | null {
     provider,
     baseUrl,
     model,
-    apiKey: trimOrUndefined(profile.apiKey),
+    apiKey: normalizeApiKey(profile.apiKey),
   }
 }
 
@@ -219,14 +242,23 @@ export function getProviderPresetDefaults(
         apiKey: '',
         requiresApiKey: false,
       }
-    case 'qwen':
+    case 'nvidia':
       return {
         provider: 'openai',
-        name: 'Qwen (gqwen-auth proxy)',
-        baseUrl: 'http://localhost:3099/v1',  // gqwen-auth default port
-        model: 'qwen3-coder-plus',
-        apiKey: '',
-        requiresApiKey: false,
+        name: 'NVIDIA NIM',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        model: 'meta/llama-3.3-70b-instruct',
+        apiKey: process.env.NVIDIA_API_KEY ?? '',
+        requiresApiKey: true,
+      }
+    case 'github-models':
+      return {
+        provider: 'openai',
+        name: 'GitHub Models',
+        baseUrl: 'https://models.github.ai/inference',
+        model: 'meta/Meta-Llama-3.3-70B-Instruct',
+        apiKey: process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? '',
+        requiresApiKey: true,
       }
     case 'custom':
       return {

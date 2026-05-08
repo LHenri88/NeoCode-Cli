@@ -27,6 +27,7 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from '../../utils/envUtils.js'
+import { getProviderValidationError } from '../../utils/providerValidation.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -138,8 +139,21 @@ export async function getAnthropicClient({
   await checkAndRefreshOAuthTokenIfNeeded()
   logForDebugging('[API:auth] OAuth token check complete')
 
-  if (!isClaudeAISubscriber()) {
+  const usesOpenAICompatibleProvider =
+    !!providerOverride ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI) ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_GITHUB) ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_GEMINI)
+
+  if (!isClaudeAISubscriber() && !usesOpenAICompatibleProvider) {
     await configureApiKeyHeaders(defaultHeaders, getIsNonInteractiveSession())
+  }
+
+  if (usesOpenAICompatibleProvider && !providerOverride) {
+    const providerValidationError = await getProviderValidationError(process.env)
+    if (providerValidationError) {
+      throw new Error(providerValidationError)
+    }
   }
 
   const resolvedFetch = buildFetch(fetchOverride, source)
@@ -171,14 +185,11 @@ export async function getAnthropicClient({
       defaultHeaders: safeHeaders,
       maxRetries,
       timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+      fetch: resolvedFetch as typeof globalThis.fetch | undefined,
       providerOverride,
     }) as unknown as Anthropic
   }
-  if (
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_GITHUB) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_GEMINI)
-  ) {
+  if (usesOpenAICompatibleProvider) {
     const { createOpenAIShimClient } = await import('./openaiShim.js')
     // Strip Anthropic auth headers before handing to the OpenAI-compatible shim.
     // configureApiKeyHeaders() above adds Authorization: Bearer <anthropic_token>
@@ -195,6 +206,7 @@ export async function getAnthropicClient({
       defaultHeaders: shimHeaders,
       maxRetries,
       timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+      fetch: resolvedFetch as typeof globalThis.fetch | undefined,
     }) as unknown as Anthropic
   }
   if (isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)) {

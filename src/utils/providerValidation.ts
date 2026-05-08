@@ -130,8 +130,12 @@ export async function getProviderValidationError(
         ? ` or put auth.json at ${credentials.authPath}`
         : ''
       const safeModel =
-        redactSecretValueForDisplay(request.requestedModel, env) ??
-        'the requested model'
+        redactSecretValueForDisplay(request.requestedModel, {
+          OPENAI_API_KEY: env.OPENAI_API_KEY,
+          CODEX_API_KEY: env.CODEX_API_KEY,
+          GEMINI_API_KEY: env.GEMINI_API_KEY,
+          GOOGLE_API_KEY: env.GOOGLE_API_KEY,
+        }) ?? 'the requested model'
       return `Codex auth is required for ${safeModel}. Set CODEX_API_KEY${authHint}.`
     }
     if (!credentials.accountId) {

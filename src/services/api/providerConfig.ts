@@ -298,15 +298,19 @@ export function isLocalProviderUrl(baseUrl: string | undefined): boolean {
 }
 
 /**
- * Returns true only for Ollama instances (port 11434 or hostname containing "ollama").
+ * Returns true only for LOCAL Ollama instances (port 11434 or local hostname containing "ollama").
  * Used to gate Ollama-specific parameters like `options.num_ctx` that other
- * OpenAI-compatible local proxies (gqwen, LM Studio) do not understand.
+ * OpenAI-compatible providers (LM Studio, Ollama Cloud, NVIDIA NIM, GitHub Models) do not understand.
+ * Ollama Cloud (e.g. api.ollama.com) is excluded — it uses standard OpenAI-compatible API.
  */
 export function isOllamaUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false
   try {
     const url = new URL(baseUrl)
-    return url.port === '11434' || url.hostname.toLowerCase().includes('ollama')
+    if (url.port === '11434') return true
+    // Only treat hostname-based matches as Ollama when the URL is local/private
+    if (url.hostname.toLowerCase().includes('ollama') && isLocalProviderUrl(baseUrl)) return true
+    return false
   } catch {
     return false
   }

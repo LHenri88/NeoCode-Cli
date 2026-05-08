@@ -1894,7 +1894,7 @@ async function* queryModel(
     // the session indefinitely since the SDK's request timeout only covers the
     // initial fetch(), not the streaming body.
     //
-    // Always enabled for local OpenAI-compatible proxies (gqwen, LM Studio, etc.)
+    // Always enabled for local OpenAI-compatible proxies (LM Studio, Ollama, etc.)
     // because they can silently hang without ever sending data — the watchdog is
     // the only mechanism that surfaces these as errors to the user.
     const isLocalOpenAIProxy =

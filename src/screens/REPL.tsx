@@ -216,6 +216,7 @@ import { handleSpeculationAccept, type ActiveSpeculationState } from '../service
 import { IdeOnboardingDialog } from '../components/IdeOnboardingDialog.js';
 import { EffortCallout, shouldShowEffortCallout } from '../components/EffortCallout.js';
 import type { EffortValue } from '../utils/effort.js';
+import { isLocalJsxVisible } from '../utils/localJsxVisibility.js';
 import { RemoteCallout } from '../components/RemoteCallout.js';
 import { getAPIProvider } from '../utils/model/providers.js';
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
@@ -1142,7 +1143,7 @@ export function REPL({
   // wait for input. Require jsx != null — if the flag is stuck true but jsx
   // is null, treat as not-showing so TextInput focus and queue processor
   // aren't deadlocked by a phantom overlay.
-  const isShowingLocalJSXCommand = toolJSX?.isLocalJSXCommand === true && toolJSX?.jsx != null;
+  const isShowingLocalJSXCommand = isLocalJsxVisible(toolJSX);
   const titleIsAnimating = isLoading && !isWaitingForApproval && !isShowingLocalJSXCommand;
   // Title animation state lives in <AnimatedTerminalTitle> so the 960ms tick
   // doesn't re-render REPL. titleDisabled/terminalTitle are still computed
@@ -2227,7 +2228,7 @@ export function REPL({
     abortSignal: abortController?.signal,
     popCommandFromQueue: handleQueuedCommandOnCancel,
     vimMode,
-    isLocalJSXCommand: toolJSX?.isLocalJSXCommand,
+    isLocalJSXCommand: isShowingLocalJSXCommand,
     isSearchingHistory,
     isHelpOpen,
     inputMode,
@@ -4435,14 +4436,14 @@ export function REPL({
     // only one ScrollBox is ever mounted at a time.
     const transcriptScrollRef = isFullscreenEnvEnabled() && !disableVirtualScroll && !dumpMode ? scrollRef : undefined;
     const transcriptMessagesElement = <Messages messages={transcriptMessages} tools={tools} commands={renderCommands} verbose={true} toolJSX={null} toolUseConfirmQueue={[]} inProgressToolUseIDs={inProgressToolUseIDs} isMessageSelectorVisible={false} conversationId={conversationId} screen={screen} agentDefinitions={agentDefinitions} streamingToolUses={transcriptStreamingToolUses} showAllInTranscript={showAllInTranscript} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} hidePastThinking={true} streamingThinking={streamingThinking} scrollRef={transcriptScrollRef} jumpRef={jumpRef} onSearchMatchesChange={onSearchMatchesChange} scanElement={scanElement} setPositions={setPositions} disableRenderCap={dumpMode} />;
-    const transcriptToolJSX = toolJSX && <Box flexDirection="column" width="100%">
+    const transcriptToolJSX = toolJSX?.jsx != null && <Box flexDirection="column" width="100%">
       {toolJSX.jsx}
     </Box>;
     const transcriptReturn = <KeybindingSetup>
       <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
       <GlobalKeybindingHandlers {...globalKeybindingProps} />
-      {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
-      <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
+      {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!isShowingLocalJSXCommand} /> : null}
+      <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!isShowingLocalJSXCommand} />
       {transcriptScrollRef ?
         // ScrollKeybindingHandler must mount before CancelRequestHandler so
         // ctrl+c-with-selection copies instead of cancelling the active task.
@@ -4572,7 +4573,7 @@ export function REPL({
   // render paths below. Commands that used to route through bottom
   // (immediate: /model, /mcp, /btw, ...) and scrollable (non-immediate:
   // /config, /theme, /diff, ...) both go here now.
-  const toolJsxCentered = isFullscreenEnvEnabled() && toolJSX?.isLocalJSXCommand === true;
+  const toolJsxCentered = isFullscreenEnvEnabled() && isShowingLocalJSXCommand;
   const centeredModal: React.ReactNode = toolJsxCentered ? toolJSX!.jsx : null;
 
   // <AlternateScreen> at the root: everything below is inside its
@@ -4583,8 +4584,8 @@ export function REPL({
   const mainReturn = <KeybindingSetup>
     <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
     <GlobalKeybindingHandlers {...globalKeybindingProps} />
-    {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
-    <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
+    {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!isShowingLocalJSXCommand} /> : null}
+    <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!isShowingLocalJSXCommand} />
     {/* ScrollKeybindingHandler must mount before CancelRequestHandler so
           ctrl+c-with-selection copies instead of cancelling the active task.
           Its raw useInput handler only stops propagation when a selection
@@ -4613,7 +4614,7 @@ export function REPL({
           text: placeholderText,
           type: 'text'
         }} addMargin={true} verbose={verbose} />}
-        {toolJSX && !(toolJSX.isLocalJSXCommand && toolJSX.isImmediate) && !toolJsxCentered && <Box flexDirection="column" width="100%">
+        {toolJSX?.jsx != null && !(toolJSX.isLocalJSXCommand && toolJSX.isImmediate) && !toolJsxCentered && <Box flexDirection="column" width="100%">
           {toolJSX.jsx}
         </Box>}
         {"external" === 'ant' && <TungstenLiveMonitor />}
@@ -4635,10 +4636,10 @@ export function REPL({
                   stays in scrollable: the main loop is paused so no jiggle,
                   and their tall content (DiffDetailView renders up to 400
                   lines with no internal scroll) needs the outer ScrollBox. */}
-          {toolJSX?.isLocalJSXCommand && toolJSX.isImmediate && !toolJsxCentered && <Box flexDirection="column" width="100%">
+          {isShowingLocalJSXCommand && toolJSX?.isImmediate && !toolJsxCentered && <Box flexDirection="column" width="100%">
             {toolJSX.jsx}
           </Box>}
-          {!showSpinner && !toolJSX?.isLocalJSXCommand && showExpandedTodos && tasksV2 && tasksV2.length > 0 && <Box width="100%" flexDirection="column">
+          {!showSpinner && !isShowingLocalJSXCommand && showExpandedTodos && tasksV2 && tasksV2.length > 0 && <Box width="100%" flexDirection="column">
             <TaskListV2 tasks={tasksV2} isStandalone={true} />
           </Box>}
           {focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: {

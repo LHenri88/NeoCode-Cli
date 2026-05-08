@@ -110,18 +110,18 @@ How to use the statusLine command:
    To display both 5-hour and 7-day limits when available:
    - input=$(cat); five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty'); week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty'); out=""; [ -n "$five" ] && out="5h:$(printf '%.0f' "$five")%"; [ -n "$week" ] && out="$out 7d:$(printf '%.0f' "$week")%"; echo "$out"
 
-2. For longer commands, you can save a new file in the user's ~/.claude directory, e.g.:
-   - ~/.claude/statusline-command.sh and reference that file in the settings.
+2. For longer commands, you can save a new file in the user's ~/.neocode directory, e.g.:
+   - ~/.neocode/statusline-command.sh and reference that file in the settings.
 
-3. Update the user's ~/.claude/settings.json with:
+3. Update the user's ~/.neocode/settings.json with:
    {
      "statusLine": {
-       "type": "command", 
+       "type": "command",
        "command": "your_command_here"
      }
    }
 
-4. If ~/.claude/settings.json is a symlink, update the target file instead.
+4. If ~/.neocode/settings.json is a symlink, update the target file instead.
 
 Guidelines:
 - Preserve existing settings when updating
