@@ -19,6 +19,7 @@ export async function resolveGuidancePath(cwd: string): Promise<string | null> {
   const candidates = [
     join(cwd, '.neocode', 'guidance.md'),
     join(cwd, '.neo', 'guidance.md'),
+    join(cwd, '.claude', 'guidance.md'),
   ]
 
   for (const candidate of candidates) {

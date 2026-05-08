@@ -96,9 +96,12 @@ afterEach(() => {
 })
 
 test('preserves usage from final OpenAI stream chunk with empty choices', async () => {
+  process.env.OPENAI_BASE_URL = 'https://api.openai.com/v1'
+  process.env.OPENAI_API_KEY = 'test-key'
+
   globalThis.fetch = (async (_input, init) => {
     const url = typeof _input === 'string' ? _input : _input.url
-    expect(url).toBe('http://example.test/v1/chat/completions')
+    expect(url).toBe('https://api.openai.com/v1/chat/completions')
 
     const body = JSON.parse(String(init?.body))
     expect(body.stream).toBe(true)
