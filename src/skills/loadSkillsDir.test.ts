@@ -1,13 +1,12 @@
-import assert from 'node:assert/strict'
+import { afterEach, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import test from 'node:test'
 
-import { getSkillDirCommands, clearSkillCaches } from './loadSkillsDir.ts'
+import { loadSkillsFromSkillsDir } from './loadSkillsDir.ts'
 
-function writeSkill(rootDir: string, skillPath: string): void {
-  const skillDir = join(rootDir, 'skills', ...skillPath.split('/'))
+function writeSkill(skillsDir: string, skillPath: string): void {
+  const skillDir = join(skillsDir, ...skillPath.split('/'))
   mkdirSync(skillDir, { recursive: true })
   writeFileSync(
     join(skillDir, 'SKILL.md'),
@@ -16,49 +15,41 @@ function writeSkill(rootDir: string, skillPath: string): void {
   )
 }
 
-test('loads flat and nested skills with colon namespaces', async () => {
-  const configDir = mkdtempSync(join(tmpdir(), 'openclaude-skills-'))
-  const cwd = join(configDir, 'workspace')
-  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR
+const tempDirs: string[] = []
 
-  try {
-    mkdirSync(cwd, { recursive: true })
-    writeSkill(configDir, 'flat-skill')
-    writeSkill(configDir, 'git/commit')
-    writeSkill(configDir, 'frontend/react/form')
-
-    process.env.CLAUDE_CONFIG_DIR = configDir
-    clearSkillCaches()
-
-    const skills = await getSkillDirCommands(cwd)
-    const promptSkills = skills.filter(skill => skill.type === 'prompt')
-    const skillNames = promptSkills.map(skill => skill.name).sort()
-
-    assert.deepEqual(skillNames, [
-      'flat-skill',
-      'frontend:react:form',
-      'git:commit',
-    ])
-
-    const nestedSkill = promptSkills.find(skill => skill.name === 'git:commit')
-    assert.ok(nestedSkill)
-    assert.equal(nestedSkill.skillRoot, join(configDir, 'skills', 'git', 'commit'))
-
-    const deepSkill = promptSkills.find(
-      skill => skill.name === 'frontend:react:form',
-    )
-    assert.ok(deepSkill)
-    assert.equal(
-      deepSkill.skillRoot,
-      join(configDir, 'skills', 'frontend', 'react', 'form'),
-    )
-  } finally {
-    if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR
-    } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir
-    }
-    clearSkillCaches()
-    rmSync(configDir, { recursive: true, force: true })
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('loads flat and nested skills with colon namespaces', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'neocode-skills-'))
+  tempDirs.push(tmpDir)
+  const skillsDir = join(tmpDir, 'skills')
+  mkdirSync(skillsDir, { recursive: true })
+
+  writeSkill(skillsDir, 'flat-skill')
+  writeSkill(skillsDir, 'git/commit')
+  writeSkill(skillsDir, 'frontend/react/form')
+
+  const results = await loadSkillsFromSkillsDir(skillsDir, 'userSettings')
+  const promptSkills = results.map(r => r.skill).filter(s => s.type === 'prompt')
+  const skillNames = promptSkills.map(s => s.name).sort()
+
+  expect(skillNames).toEqual([
+    'flat-skill',
+    'frontend:react:form',
+    'git:commit',
+  ])
+
+  const nestedSkill = promptSkills.find(s => s.name === 'git:commit')
+  expect(nestedSkill).toBeDefined()
+  expect(nestedSkill!.skillRoot).toBe(join(skillsDir, 'git', 'commit'))
+
+  const deepSkill = promptSkills.find(s => s.name === 'frontend:react:form')
+  expect(deepSkill).toBeDefined()
+  expect(deepSkill!.skillRoot).toBe(
+    join(skillsDir, 'frontend', 'react', 'form'),
+  )
 })
