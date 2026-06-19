@@ -316,6 +316,37 @@ export function isOllamaUrl(baseUrl: string | undefined): boolean {
   }
 }
 
+/**
+ * Returns true for Ollama Cloud API (ollama.com).
+ * Used to gate schema simplification — Ollama Cloud models have limited
+ * tool-schema support and complex schemas can trigger 403 subscription errors.
+ */
+export function isOllamaCloudUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const hostname = new URL(baseUrl).hostname.toLowerCase()
+    return hostname === 'ollama.com' || hostname.endsWith('.ollama.com')
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns true for NVIDIA NIM API (integrate.api.nvidia.com).
+ * NVIDIA's backend has issues with strict JSON Schema features like
+ * `additionalProperties: false` and complex `anyOf`/`oneOf` combinators,
+ * causing 500 "unhashable type: 'dict'" errors.
+ */
+export function isNvidiaApiUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const hostname = new URL(baseUrl).hostname.toLowerCase()
+    return hostname.includes('nvidia.com')
+  } catch {
+    return false
+  }
+}
+
 export function isCodexBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false
   try {

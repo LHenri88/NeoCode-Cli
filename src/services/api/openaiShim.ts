@@ -44,6 +44,8 @@ import {
 } from './codexShim.js'
 import {
   isLocalProviderUrl,
+  isNvidiaApiUrl,
+  isOllamaCloudUrl,
   isOllamaUrl,
   resolveCodexApiCredentials,
   resolveProviderRequest,
@@ -470,10 +472,83 @@ function normalizeSchemaForOpenAI(
   return record
 }
 
+/**
+ * Simplify schemas for providers that can't handle strict OpenAI-style schema features.
+ * NVIDIA NIM returns 500 "unhashable type: 'dict'" when schemas contain
+ * `additionalProperties` or complex `anyOf`/`oneOf` combinators.
+ * Ollama Cloud triggers 403 subscription errors with complex tool schemas.
+ *
+ * This function:
+ * - Strips `additionalProperties` from all objects
+ * - Simplifies nullable `anyOf` patterns: `{anyOf: [{type:"string"},{type:"null"}]}` → `{type:"string"}`
+ * - Removes empty/single-element combinators
+ */
+function simplifySchemaForLimitedProvider(schema: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...schema }
+
+  delete result.additionalProperties
+
+  if (result.type === 'object' && result.properties) {
+    const props: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(result.properties as Record<string, unknown>)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        props[key] = simplifySchemaForLimitedProvider(value as Record<string, unknown>)
+      } else {
+        props[key] = value
+      }
+    }
+    result.properties = props
+  }
+
+  if ('items' in result) {
+    if (Array.isArray(result.items)) {
+      result.items = (result.items as unknown[]).map(
+        item => (item && typeof item === 'object' && !Array.isArray(item))
+          ? simplifySchemaForLimitedProvider(item as Record<string, unknown>)
+          : item,
+      )
+    } else if (result.items && typeof result.items === 'object') {
+      result.items = simplifySchemaForLimitedProvider(result.items as Record<string, unknown>)
+    }
+  }
+
+  for (const key of ['anyOf', 'oneOf'] as const) {
+    if (Array.isArray(result[key])) {
+      const branches = result[key] as Array<Record<string, unknown>>
+      const nonNull = branches.filter(b => b.type !== 'null')
+      if (nonNull.length === 1 && branches.length <= 2) {
+        const simplified = simplifySchemaForLimitedProvider(nonNull[0])
+        delete result[key]
+        Object.assign(result, simplified)
+      } else if (nonNull.length > 1) {
+        result[key] = branches.map(b =>
+          b && typeof b === 'object' && !Array.isArray(b)
+            ? simplifySchemaForLimitedProvider(b)
+            : b,
+        )
+      } else {
+        delete result[key]
+      }
+    }
+  }
+
+  if (Array.isArray(result.allOf)) {
+    result.allOf = (result.allOf as unknown[]).map(
+      item => (item && typeof item === 'object' && !Array.isArray(item))
+        ? simplifySchemaForLimitedProvider(item as Record<string, unknown>)
+        : item,
+    )
+  }
+
+  return result
+}
+
 function convertTools(
   tools: Array<{ name: string; description?: string; input_schema?: Record<string, unknown> }>,
+  options?: { baseUrl?: string },
 ): OpenAITool[] {
   const isGemini = isGeminiMode()
+  const needsSimplifiedSchema = isNvidiaApiUrl(options?.baseUrl) || isOllamaCloudUrl(options?.baseUrl)
 
   return tools
     .filter(t => t.name !== 'ToolSearchTool') // Not relevant for OpenAI
@@ -491,12 +566,21 @@ function convertTools(
         }
       }
 
+      let parameters: Record<string, unknown>
+      if (needsSimplifiedSchema) {
+        parameters = simplifySchemaForLimitedProvider(
+          normalizeSchemaForOpenAI(schema, false),
+        )
+      } else {
+        parameters = normalizeSchemaForOpenAI(schema, !isGemini)
+      }
+
       return {
         type: 'function' as const,
         function: {
           name: t.name,
           description: t.description ?? '',
-          parameters: normalizeSchemaForOpenAI(schema, !isGemini),
+          parameters,
         },
       }
     })
@@ -1259,9 +1343,17 @@ class OpenAIShimMessages {
       body.stream_options = { include_usage: true }
     }
 
-    // Ollama defaults to num_ctx=8192 even for models that support more.
-    // NeoCode's system prompt + tool definitions often exceeds 8k tokens.
-    // Only inject for local Ollama — Ollama Cloud and others don't understand `options`.
+    // Ollama loads each model with a small default context window (4096 in
+    // 0.16.x), and NeoCode's system prompt + tool definitions alone overflow it.
+    //
+    // NOTE: Ollama's OpenAI-compatible /v1/chat/completions endpoint *silently
+    // ignores* this `options.num_ctx` — the only lever that actually changes the
+    // loaded context window on that endpoint is the server-wide
+    // OLLAMA_CONTEXT_LENGTH env var, which NeoCode sets when it starts
+    // `ollama serve` (see startOllamaServeBackground / resolveOllamaContextLength).
+    // We still send num_ctx here as forward-compatible insurance: it is harmless
+    // (the endpoint drops unknown options) and future Ollama versions may honor
+    // it. Only inject for local Ollama — Ollama Cloud and others reject `options`.
     if (isOllamaUrl(request.baseUrl)) {
       const { getOpenAIContextWindow: getCtx } = await import('../../utils/model/openaiContextWindows.js')
       const knownCtx = getCtx(request.resolvedModel)
@@ -1279,18 +1371,21 @@ class OpenAIShimMessages {
           description?: string
           input_schema?: Record<string, unknown>
         }>,
+        { baseUrl: request.baseUrl },
       )
       if (converted.length > 0) {
         body.tools = converted
         if (params.tool_choice) {
           const tc = params.tool_choice as { type?: string; name?: string }
+          // NVIDIA and Ollama Cloud don't support tool_choice as an object —
+          // force to 'auto' to avoid server-side hash/validation errors.
+          const noObjectToolChoice = isNvidiaApiUrl(request.baseUrl) || isOllamaCloudUrl(request.baseUrl)
           if (tc.type === 'auto') {
             body.tool_choice = 'auto'
           } else if (tc.type === 'tool' && tc.name) {
-            body.tool_choice = {
-              type: 'function',
-              function: { name: tc.name },
-            }
+            body.tool_choice = noObjectToolChoice
+              ? 'auto'
+              : { type: 'function', function: { name: tc.name } }
           } else if (tc.type === 'any') {
             body.tool_choice = 'required'
           } else if (tc.type === 'none') {
@@ -1527,6 +1622,36 @@ class OpenAIShimMessages {
             `Wait a moment and try again.`,
           )
         }
+        // Ollama (and llama.cpp-style servers) reject any prompt larger than the
+        // model's *loaded* context window with this specific 400. That window is
+        // governed by the server-wide OLLAMA_CONTEXT_LENGTH — NOT by anything we
+        // can send per request (the OpenAI-compatible endpoint ignores
+        // options.num_ctx) — so point the user at the real fix instead of dumping
+        // a raw error. Deliberately avoid the "context length exceeded" phrase so
+        // this does not trigger auto-compact: compacting cannot shrink the request
+        // below the system-prompt + tools baseline when the window itself is tiny.
+        if (response.status === 400) {
+          const haystack = `${errMsg} ${errorBody}`.toLowerCase()
+          if (
+            haystack.includes('exceed_context_size') ||
+            haystack.includes('exceeds the available context size') ||
+            haystack.includes('n_ctx')
+          ) {
+            const { resolveOllamaContextLength } = await import(
+              '../../utils/providerDiscovery.js'
+            )
+            const numCtx = resolveOllamaContextLength()
+            throw new Error(
+              `Ollama loaded this model with a context window too small for the request ` +
+              `(${errMsg}). The window is set by the server-wide OLLAMA_CONTEXT_LENGTH, ` +
+              `which cannot be overridden per request. NeoCode sets ` +
+              `OLLAMA_CONTEXT_LENGTH=${numCtx} when it starts Ollama, but a server you ` +
+              `started yourself keeps its own (small) default. Fix: stop it and run ` +
+              `OLLAMA_CONTEXT_LENGTH=${numCtx} ollama serve, or re-select Ollama via ` +
+              `/provider so NeoCode restarts it with the right window.`,
+            )
+          }
+        }
         // For any other error from a local proxy, surface it immediately.
         // Retrying 500/503 from a local proxy is pointless — it won't self-heal.
         if (response.status >= 400) {
@@ -1570,8 +1695,13 @@ class OpenAIShimMessages {
           lowerBody.includes('upgrade') ||
           lowerBody.includes('requires a')
         ) {
+          const isOllamaCloud = isOllamaCloudUrl(request.baseUrl)
+          const hint = isOllamaCloud
+            ? ` · Model "${request.resolvedModel}" requires Ollama Pro. ` +
+              `Select a confirmed free model via /provider or upgrade at https://ollama.com/upgrade`
+            : ''
           throw new Error(
-            `Model requires a subscription · Check your plan at the provider · API Error: ${errMsg}`,
+            `Model requires a subscription · Check your plan at the provider${hint} · API Error: ${errMsg}`,
           )
         }
         if (
@@ -1585,6 +1715,17 @@ class OpenAIShimMessages {
         }
         throw new Error(
           `Invalid API key · Update via /provider · API Error: ${errMsg}`,
+        )
+      }
+
+      // 500 from NVIDIA NIM — usually schema-related; surface a clear hint
+      if (response.status === 500 && isNvidiaApiUrl(request.baseUrl)) {
+        const errResp = errorResponse as { error?: { message?: string } } | undefined
+        const errMsg = errResp?.error?.message ?? errorBody
+        throw new Error(
+          `NVIDIA NIM error (${request.resolvedModel}): ${errMsg}. ` +
+          `This model may not support tool calling. Try a different model via /provider ` +
+          `(recommended: meta/llama-3.3-70b-instruct, deepseek-ai/deepseek-r1).`,
         )
       }
 

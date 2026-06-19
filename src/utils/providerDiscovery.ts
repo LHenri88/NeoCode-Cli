@@ -2,11 +2,46 @@ import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { OllamaModelDescriptor } from './providerRecommendation.ts'
 import { DEFAULT_OPENAI_BASE_URL } from '../services/api/providerConfig.js'
+import { isEnvTruthy } from './envUtils.js'
 
 const execFileAsync = promisify(execFile)
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434'
 export const DEFAULT_ATOMIC_CHAT_BASE_URL = 'http://127.0.0.1:1337'
+
+/**
+ * Default context window (in tokens) NeoCode asks Ollama to load models with.
+ *
+ * Why this matters: NeoCode talks to Ollama through its OpenAI-compatible
+ * `/v1/chat/completions` endpoint, which **silently ignores** the per-request
+ * `options.num_ctx` field. The ONLY reliable lever for the context window on
+ * that endpoint is the server-wide `OLLAMA_CONTEXT_LENGTH` environment variable,
+ * read by `ollama serve` at startup. Ollama itself defaults this to a small
+ * value (4096 in 0.16.x), so NeoCode's system prompt + tool definitions + a
+ * single user query routinely overflow it ("request (N tokens) exceeds the
+ * available context size (4096 tokens)"). 32k leaves comfortable room for the
+ * system prompt, tools, and a multi-turn conversation on any modern model.
+ */
+export const DEFAULT_OLLAMA_NUM_CTX = 32_768
+
+/** Minimum context length we will accept from a user override. */
+const MIN_OLLAMA_NUM_CTX = 4_096
+
+/**
+ * Resolve the context window NeoCode should configure `ollama serve` with.
+ * Honors an explicit, sane `OLLAMA_CONTEXT_LENGTH` set by the user; otherwise
+ * falls back to {@link DEFAULT_OLLAMA_NUM_CTX}.
+ */
+export function resolveOllamaContextLength(): number {
+  const raw = process.env.OLLAMA_CONTEXT_LENGTH?.trim()
+  if (raw && raw !== 'undefined') {
+    const parsed = Number.parseInt(raw, 10)
+    if (Number.isFinite(parsed) && parsed >= MIN_OLLAMA_NUM_CTX) {
+      return parsed
+    }
+  }
+  return DEFAULT_OLLAMA_NUM_CTX
+}
 
 function withTimeoutSignal(timeoutMs: number): {
   signal: AbortSignal
@@ -302,11 +337,50 @@ export async function listOllamaModelsFromCLI(): Promise<OllamaModelDescriptor[]
 }
 
 /**
+ * Best-effort stop of any running `ollama serve` so it can be restarted with a
+ * larger `OLLAMA_CONTEXT_LENGTH`. An already-running server (started outside
+ * NeoCode) keeps whatever context default it was launched with, and there is no
+ * API to reconfigure it in place — the only way to apply a new context window is
+ * to restart the daemon. Failures are swallowed: if nothing is running, or we
+ * lack permission, the subsequent spawn simply no-ops or wins the port.
+ */
+async function stopRunningOllamaServe(): Promise<void> {
+  try {
+    if (process.platform === 'win32') {
+      // /F force, /IM image name. Targets `ollama.exe` (the serve process);
+      // the tray app (`ollama app.exe`) is a different image and is left alone.
+      await execFileAsync('taskkill', ['/F', '/IM', 'ollama.exe'], {
+        timeout: 5000,
+        shell: true,
+      })
+    } else {
+      // pkill exits non-zero when there is no match — that's fine, we catch it.
+      await execFileAsync('pkill', ['-f', 'ollama serve'], { timeout: 5000 })
+    }
+  } catch {
+    // No running server, or we can't stop it. Proceed to spawn regardless.
+  }
+}
+
+/**
  * Start `ollama serve` in the background (fire-and-forget).
  * Safe to call even when serve is already running.
  * Uses the cached resolved binary path so it works when ollama is not on PATH.
+ *
+ * The spawned server inherits `OLLAMA_CONTEXT_LENGTH` (see
+ * {@link resolveOllamaContextLength}) so every model loads with a context window
+ * large enough for NeoCode's prompt — the OpenAI-compatible endpoint NeoCode
+ * uses cannot set this per request. On the first invocation of a session we also
+ * restart any externally-started server so the context default actually takes
+ * effect; set `NEOCODE_OLLAMA_NO_MANAGE=1` to opt out of that restart.
  */
 export function startOllamaServeBackground(): void {
+  const numCtx = resolveOllamaContextLength()
+
+  // Persist into this process's env so the spawned child — and any later CLI
+  // respawn that inherits process.env — keeps the same configuration.
+  process.env.OLLAMA_CONTEXT_LENGTH = String(numCtx)
+
   // Prefer the previously resolved path (set by isOllamaInstalled / listOllamaModelsFromCLI).
   // Fall back to PATH and then each candidate so the call is always attempt-based.
   const binsToTry =
@@ -314,22 +388,44 @@ export function startOllamaServeBackground(): void {
       ? [_resolvedOllamaBin]
       : getCandidateOllamaPaths()
 
-  for (const bin of binsToTry) {
-    try {
-      const child = spawn(bin, ['serve'], {
-        detached: true,
-        stdio: 'ignore',
-        shell: process.platform === 'win32',
-      })
-      child.unref()
-      // spawn() doesn't throw on a missing binary — it emits 'error'.
-      // We stop after the first successful spawn attempt (already-running
-      // case is fine — ollama exits gracefully when serve is already up).
-      return
-    } catch {
-      // continue to next candidate
+  const spawnServe = (): void => {
+    for (const bin of binsToTry) {
+      try {
+        const child = spawn(bin, ['serve'], {
+          detached: true,
+          stdio: 'ignore',
+          shell: process.platform === 'win32',
+          env: process.env,
+        })
+        child.unref()
+        // spawn() doesn't throw on a missing binary — it emits 'error'.
+        // We stop after the first successful spawn attempt (already-running
+        // case is fine — ollama exits gracefully when serve is already up).
+        return
+      } catch {
+        // continue to next candidate
+      }
     }
   }
+
+  const alreadyManaged = isEnvTruthy(process.env.NEOCODE_OLLAMA_MANAGED)
+  const optedOut = isEnvTruthy(process.env.NEOCODE_OLLAMA_NO_MANAGE)
+
+  // Mark the session as managed so we don't repeatedly restart the daemon on
+  // subsequent respawns (e.g. when the user switches models).
+  process.env.NEOCODE_OLLAMA_MANAGED = '1'
+
+  if (alreadyManaged || optedOut) {
+    spawnServe()
+    return
+  }
+
+  // First managed start of the session: an external server may already be
+  // running with too small a context. Restart it so OLLAMA_CONTEXT_LENGTH wins,
+  // then bring our server up once the killed process has released the port.
+  void stopRunningOllamaServe().finally(() => {
+    setTimeout(spawnServe, 700)
+  })
 }
 
 /**
@@ -560,7 +656,7 @@ export async function listOpenRouterModels(
 // ─── Ollama Cloud ─────────────────────────────────────────────────────────────
 // API endpoint: https://ollama.com/v1  (OpenAI-compatible)
 // Auth: Authorization: Bearer <OLLAMA_API_KEY>
-// Example: curl https://ollama.com/v1/chat/completions -H "Authorization: Bearer KEY" -d '{"model":"gpt-oss:120b","messages":[...]}'
+// Example: curl https://ollama.com/v1/chat/completions -H "Authorization: Bearer KEY" -d '{"model":"gemma4","messages":[...]}'
 
 export const OLLAMA_CLOUD_BASE_URL = 'https://ollama.com'
 
@@ -569,54 +665,57 @@ export const OLLAMA_CLOUD_BASE_URL = 'https://ollama.com'
  * Model names are the plain API names as used in https://ollama.com/v1/models.
  */
 const OLLAMA_CLOUD_MODEL_RANK: Record<string, string> = {
-  'devstral-2':            'Devstral 2 — agentic coding by Mistral ★',
-  'devstral-small-2':      'Devstral Small 2 — compact agentic coding ★',
-  'qwen3-coder-next':      'Qwen3 Coder Next — top cloud coding model ★',
+  // ── Free-tier friendly (level 1-2) — work without Pro subscription ──
+  'gemma4':                'Gemma 4 — Google open model (free)',
+  'nemotron-3-nano':       'Nemotron 3 Nano — NVIDIA compact (free)',
+  'ministral-3':           'Ministral 3 — compact Mistral (free)',
+  'devstral-small-2':      'Devstral Small 2 — agentic coding (free) ★',
+  'glm-4.7':               'GLM-4.7 — Zhipu efficient (free)',
+  'rnj-1':                 'RNJ-1 — reasoning model (free)',
+  'minimax-m2.1':          'MiniMax M2.1 — fast MoE (free)',
+  // ── Larger models (level 2-3) — may require Pro on free tier ──
+  'qwen3-coder-next':      'Qwen3 Coder Next — top cloud coding ★',
   'qwen3.5':               'Qwen 3.5 — Alibaba flagship',
   'qwen3-next':            'Qwen3 Next — latest Qwen reasoning',
-  'gpt-oss:120b':          'GPT-OSS 120B — OpenAI open-source large',
-  'gpt-oss:20b':           'GPT-OSS 20B — OpenAI open-source compact',
+  'deepseek-v4-flash':     'DeepSeek V4 Flash — fast reasoning',
   'deepseek-v3.2':         'DeepSeek V3.2 — strong coding + reasoning',
-  'deepseek-v3.1:671b':    'DeepSeek V3.1 671B — massive reasoning',
-  'kimi-k2.5':             'Kimi K2.5 — Moonshot long context ★',
-  'cogito-2.1':            'Cogito 2.1 — advanced reasoning',
   'gemini-3-flash-preview':'Gemini 3 Flash Preview — Google fast model',
-  'gemma4':                'Gemma 4 — Google open model',
   'glm-5.1':               'GLM-5.1 — Zhipu flagship',
   'glm-5':                 'GLM-5 — Zhipu general model',
-  'glm-4.7':               'GLM-4.7 — Zhipu efficient model',
   'minimax-m2.7':          'MiniMax M2.7 — large MoE model',
   'minimax-m2.5':          'MiniMax M2.5 — balanced MoE',
-  'minimax-m2':            'MiniMax M2 — fast MoE',
-  'ministral-3':           'Ministral 3 — compact Mistral',
   'nemotron-3-super':      'Nemotron 3 Super — NVIDIA large',
-  'nemotron-3-nano':       'Nemotron 3 Nano — NVIDIA compact',
-  'rnj-1':                 'RNJ-1 — reasoning model',
+  'kimi-k2.6':             'Kimi K2.6 — Moonshot long context ★',
+  // ── Heavy models (level 3-4) — likely require Pro subscription ──
+  'deepseek-v4-pro':       'DeepSeek V4 Pro — top reasoning (Pro)',
 }
 
 /** Curated fallback list (shown when API call fails/no key entered yet).
  *  Plain model names as returned by https://ollama.com/v1/models. */
 export const OLLAMA_CLOUD_MODELS: Array<{ value: string; description: string }> = [
-  { value: 'devstral-2',            description: 'Devstral 2 — agentic coding by Mistral ★' },
-  { value: 'devstral-small-2',      description: 'Devstral Small 2 — compact agentic coding ★' },
-  { value: 'qwen3-coder-next',      description: 'Qwen3 Coder Next — top cloud coding model ★' },
+  // Free-tier friendly models first
+  { value: 'gemma4',                description: 'Gemma 4 — Google open model (free)' },
+  { value: 'nemotron-3-nano',       description: 'Nemotron 3 Nano — NVIDIA compact (free)' },
+  { value: 'ministral-3',           description: 'Ministral 3 — compact Mistral (free)' },
+  { value: 'devstral-small-2',      description: 'Devstral Small 2 — agentic coding (free) ★' },
+  { value: 'glm-4.7',              description: 'GLM-4.7 — Zhipu efficient (free)' },
+  { value: 'rnj-1',                 description: 'RNJ-1 — reasoning model (free)' },
+  { value: 'minimax-m2.1',          description: 'MiniMax M2.1 — fast MoE (free)' },
+  // Larger models — may require Pro on free tier
+  { value: 'qwen3-coder-next',      description: 'Qwen3 Coder Next — top cloud coding ★' },
   { value: 'qwen3.5',               description: 'Qwen 3.5 — Alibaba flagship' },
   { value: 'qwen3-next',            description: 'Qwen3 Next — latest Qwen reasoning' },
-  { value: 'gpt-oss:120b',          description: 'GPT-OSS 120B — OpenAI open-source large' },
-  { value: 'gpt-oss:20b',           description: 'GPT-OSS 20B — OpenAI open-source compact' },
+  { value: 'deepseek-v4-flash',     description: 'DeepSeek V4 Flash — fast reasoning' },
   { value: 'deepseek-v3.2',         description: 'DeepSeek V3.2 — strong coding + reasoning' },
-  { value: 'kimi-k2.5',             description: 'Kimi K2.5 — Moonshot long context ★' },
-  { value: 'cogito-2.1',            description: 'Cogito 2.1 — advanced reasoning' },
   { value: 'gemini-3-flash-preview',description: 'Gemini 3 Flash Preview — Google fast model' },
-  { value: 'gemma4',                description: 'Gemma 4 — Google open model' },
   { value: 'glm-5.1',              description: 'GLM-5.1 — Zhipu flagship' },
   { value: 'glm-5',                description: 'GLM-5 — Zhipu general model' },
   { value: 'minimax-m2.7',          description: 'MiniMax M2.7 — large MoE model' },
   { value: 'minimax-m2.5',          description: 'MiniMax M2.5 — balanced MoE' },
-  { value: 'ministral-3',           description: 'Ministral 3 — compact Mistral' },
   { value: 'nemotron-3-super',      description: 'Nemotron 3 Super — NVIDIA large' },
-  { value: 'nemotron-3-nano',       description: 'Nemotron 3 Nano — NVIDIA compact' },
-  { value: 'rnj-1',                 description: 'RNJ-1 — reasoning model' },
+  { value: 'kimi-k2.6',             description: 'Kimi K2.6 — Moonshot long context ★' },
+  // Heavy model — likely requires Pro
+  { value: 'deepseek-v4-pro',       description: 'DeepSeek V4 Pro — top reasoning (Pro)' },
 ]
 
 /** Rank keys list for ordering known models first. */

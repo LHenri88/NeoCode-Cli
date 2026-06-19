@@ -1,18 +1,48 @@
 import { afterEach, expect, mock, test } from 'bun:test'
 
 import {
+  DEFAULT_OLLAMA_NUM_CTX,
   getLocalOpenAICompatibleProviderLabel,
   listOpenAICompatibleModels,
+  resolveOllamaContextLength,
 } from './providerDiscovery.js'
 
 const originalFetch = globalThis.fetch
 const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+  OLLAMA_CONTEXT_LENGTH: process.env.OLLAMA_CONTEXT_LENGTH,
 }
 
 afterEach(() => {
   globalThis.fetch = originalFetch
   process.env.OPENAI_BASE_URL = originalEnv.OPENAI_BASE_URL
+  if (originalEnv.OLLAMA_CONTEXT_LENGTH === undefined) {
+    delete process.env.OLLAMA_CONTEXT_LENGTH
+  } else {
+    process.env.OLLAMA_CONTEXT_LENGTH = originalEnv.OLLAMA_CONTEXT_LENGTH
+  }
+})
+
+test('resolveOllamaContextLength: defaults to 32k when unset', () => {
+  delete process.env.OLLAMA_CONTEXT_LENGTH
+  expect(resolveOllamaContextLength()).toBe(DEFAULT_OLLAMA_NUM_CTX)
+  expect(DEFAULT_OLLAMA_NUM_CTX).toBeGreaterThanOrEqual(32_768)
+})
+
+test('resolveOllamaContextLength: honors a sane user override', () => {
+  process.env.OLLAMA_CONTEXT_LENGTH = '65536'
+  expect(resolveOllamaContextLength()).toBe(65_536)
+})
+
+test('resolveOllamaContextLength: rejects too-small / garbage overrides', () => {
+  // Below the floor — would still overflow NeoCode's system prompt + tools.
+  process.env.OLLAMA_CONTEXT_LENGTH = '2048'
+  expect(resolveOllamaContextLength()).toBe(DEFAULT_OLLAMA_NUM_CTX)
+  // Non-numeric (e.g. a Windows shell writing the literal "undefined").
+  process.env.OLLAMA_CONTEXT_LENGTH = 'undefined'
+  expect(resolveOllamaContextLength()).toBe(DEFAULT_OLLAMA_NUM_CTX)
+  process.env.OLLAMA_CONTEXT_LENGTH = 'not-a-number'
+  expect(resolveOllamaContextLength()).toBe(DEFAULT_OLLAMA_NUM_CTX)
 })
 
 test('lists models from a local openai-compatible /models endpoint', async () => {

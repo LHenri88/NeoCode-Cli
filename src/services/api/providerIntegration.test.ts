@@ -790,6 +790,38 @@ describe('HTTP error handling', () => {
     expect(String((thrownError as Error).message).toLowerCase()).not.toContain('context length exceeded')
   })
 
+  test('local Ollama exceed_context_size_error maps to an actionable OLLAMA_CONTEXT_LENGTH hint', async () => {
+    // The exact error Ollama 0.16.x returns when the prompt overflows the
+    // model's loaded context window (default 4096). See screenshot in the bug.
+    mockFetch(() =>
+      jsonResponse(
+        {
+          error: {
+            code: 400,
+            message:
+              'request (5584 tokens) exceeds the available context size (4096 tokens), try increasing it',
+            type: 'exceed_context_size_error',
+            n_prompt_tokens: 5584,
+            n_ctx: 4096,
+          },
+        },
+        400,
+      ),
+    )
+    let thrown: unknown
+    try {
+      await callShim('http://localhost:11434/v1')
+    } catch (e) {
+      thrown = e
+    }
+    const msg = String((thrown as Error).message)
+    expect(msg).toContain('OLLAMA_CONTEXT_LENGTH')
+    expect(msg.toLowerCase()).toContain('ollama serve')
+    // Must NOT trigger auto-compact — compacting cannot shrink below the
+    // system-prompt + tools baseline when the window itself is tiny.
+    expect(msg.toLowerCase()).not.toContain('context length exceeded')
+  })
+
   test('local 429 throws rate-limit error after max retries', async () => {
     let calls = 0
     mockFetch(() => {
@@ -1099,12 +1131,22 @@ describe('ollama round-trip query', () => {
         }> } }
       }
 
-      const response = await client.beta.messages.create({
-        model,
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say just the word OK.' }],
-        stream: false,
-      })
+      let response
+      try {
+        response = await client.beta.messages.create({
+          model,
+          max_tokens: 50,
+          messages: [{ role: 'user', content: 'Say just the word OK.' }],
+          stream: false,
+        })
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('403') || msg.includes('subscription') || msg.includes('upgrade')) {
+          console.log(`[SKIP] ollama model "${model}" requires subscription: ${msg.slice(0, 120)}`)
+          return
+        }
+        throw err
+      }
 
       const text = response.content
         .filter(b => b.type === 'text')

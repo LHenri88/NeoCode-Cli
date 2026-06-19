@@ -91,6 +91,20 @@ const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   'gemini-2.5-pro':         1_048_576,
   'gemini-2.5-flash':       1_048_576,
 
+  // Ollama Cloud models
+  'deepseek-v4-flash':        128_000,
+  'deepseek-v4-pro':          128_000,
+  'kimi-k2.6':                131_072,
+  'minimax-m2.1':              32_768,
+
+  // NVIDIA NIM models
+  'meta/llama-3.3-70b-instruct':       128_000,
+  'meta/llama-3.1-8b-instruct':        128_000,
+  'deepseek-ai/deepseek-r1':           128_000,
+  'mistralai/mistral-7b-instruct-v0.3': 32_768,
+  'microsoft/phi-3-medium-128k-instruct': 128_000,
+  'nvidia/llama-3.3-nemotron-super-49b-v1': 131_072,
+
   // Ollama local models
   // Llama 3.1+ models support 128k context natively (Meta official specs).
   // Ollama defaults to num_ctx=8192 but users can configure higher values.
@@ -207,6 +221,20 @@ const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
   'gemini-2.0-flash':          8_192,
   'gemini-2.5-pro':           65_536,
   'gemini-2.5-flash':         65_536,
+
+  // Ollama Cloud models
+  'deepseek-v4-flash':         32_768,
+  'deepseek-v4-pro':           32_768,
+  'kimi-k2.6':                  8_192,
+  'minimax-m2.1':               4_096,
+
+  // NVIDIA NIM models
+  'meta/llama-3.3-70b-instruct':         4_096,
+  'meta/llama-3.1-8b-instruct':          4_096,
+  'deepseek-ai/deepseek-r1':            32_768,
+  'mistralai/mistral-7b-instruct-v0.3':  4_096,
+  'microsoft/phi-3-medium-128k-instruct': 4_096,
+  'nvidia/llama-3.3-nemotron-super-49b-v1': 32_768,
 
   // Ollama local models (conservative safe defaults)
   'llama3.3':                   4_096,
